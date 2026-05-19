@@ -1,9 +1,9 @@
-﻿{
-  "name": "Elektrika â€“ Elektriker App",
+{
+  "name": "Elektrika - Elektriker App",
   "short_name": "Elektrika",
-  "description": "Professionelle Elektriker App fÃ¼r AuftrÃ¤ge, Rechnungen, Buchhaltung und mehr",
-  "start_url": "/",
-  "scope": "/",
+  "description": "Professionelle Elektriker App fuer Auftraege, Rechnungen, Buchhaltung und mehr",
+  "start_url": "/elektrika-app/",
+  "scope": "/elektrika-app/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#f59e0b",
@@ -24,4 +24,3 @@
     }
   ]
 }
-
