@@ -1,0 +1,8 @@
+{
+  "users": [
+    { "name": "Admin",       "pin": "0000", "rolle": "Chef",        "aktiv": true },
+    { "name": "Mitarbeiter1","pin": "1111", "rolle": "Elektriker",  "aktiv": true },
+    { "name": "Mitarbeiter2","pin": "2222", "rolle": "Elektriker",  "aktiv": true },
+    { "name": "Mitarbeiter3","pin": "3333", "rolle": "Elektriker",  "aktiv": true }
+  ]
+}
