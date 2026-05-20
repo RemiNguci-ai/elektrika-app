@@ -798,20 +798,11 @@ function mapLink(adresse) {
   </span>`;
 }
 
-let _openFolders = (function(){
-  try {
-    var v = JSON.parse(localStorage.getItem('elektrika_folders'));
-    if (Array.isArray(v) && v.length > 0) return v;
-  } catch(e){}
-  return ['k3','k4','k5','k7']; // alle standardmäßig offen
-})();
+let _openFolders = JSON.parse(localStorage.getItem('elektrika_folders')||'["k3","k4","k5","k7"]');
 
 function toggleFolder(id) {
-  if (_openFolders.includes(id)) {
-    _openFolders = _openFolders.filter(function(f){return f!==id;});
-  } else {
-    _openFolders.push(id);
-  }
+  if (_openFolders.includes(id)) _openFolders = _openFolders.filter(f=>f!==id);
+  else _openFolders.push(id);
   localStorage.setItem('elektrika_folders', JSON.stringify(_openFolders));
   renderSidebar();
 }
@@ -821,41 +812,104 @@ function renderSidebar() {
   const role = currentUser ? currentUser.rolle : null;
   const isChef = !role || role === 'Chef' || role === 'Admin';
 
-  function item(page, icon, label) {
-    return `<div class="nav-item${currentPage===page?' active':''}" onclick="showPage('${page}')">
-      <span class="nav-icon">${custIcons[page]||icon}</span> <span>${label}</span>
+  function navItem(page, icon, label) {
+    return `<div class="nav-item${currentPage===page?' active':''}" onclick="showPage('${page}')" style="padding-left:28px">
+      <span class="nav-icon">${custIcons[page]||icon}</span> ${label}
     </div>`;
   }
 
-  let html = `
-  <div class="nav-section">
-    ${item('dashboard','🏠','Dashboard')}
-    ${item('auftraege','📝','Aufträge')}
-    ${item('journal','📔','Tagesberichte')}
-    ${item('lager','📦','Lager')}
-    ${item('bestellungen','🛒','Bestellungen')}
-    ${item('projekte','📁','Projekte')}
-    ${item('kunden','👥','Kunden')}
-    ${item('kalender','📅','Kalender')}
-    ${item('pruefung','🔍','Prüfungen')}
-    ${item('messgeraete','🔧','Messgeräte')}
-    ${item('rechner','🔢','Rechner')}
-    ${item('normen','📋','Normen')}
-    ${item('chat','💬','Chat')}
+  function folder(id, icon, label, items) {
+    const open = _openFolders.includes(id);
+    const hasActive = items.some(i=>i.page===currentPage);
+    return `<div>
+      <div onclick="toggleFolder('${id}')" style="display:flex;align-items:center;gap:8px;padding:9px 16px;cursor:pointer;color:var(--text);font-size:13px;font-weight:700;border-left:3px solid ${hasActive?'var(--primary)':'transparent'};background:${hasActive?'var(--bg3)':'transparent'}">
+        <span>${open?'📂':'📁'}</span>
+        <span style="flex:1">${icon} ${label}</span>
+        <span style="font-size:10px;color:var(--muted)">${open?'▲':'▼'}</span>
+      </div>
+      ${open ? items.map(i=>navItem(i.page,i.icon,i.label)).join('') : ''}
+    </div>`;
+  }
+
+  let html = '';
+
+  // Dashboard + Profil
+  html += `<div class="nav-section">
+    <div class="nav-section-title">START</div>
+    ${navItem('dashboard','🏠','Dashboard')}
+    ${navItem('profil','👤','Profil')}
+    ${navItem('benachrichtigungen','🔔','Benachrichtigungen')}
   </div>`;
 
-  if (isChef) {
-    html += `
-  <div class="nav-section">
-    ${item('kva','📋','KVA')}
-    ${item('angebote','📄','Angebote')}
-    ${item('rechnungen','💶','Rechnungen')}
-    ${item('finanzen','📊','Finanzen')}
-    ${item('buchhaltung','📊','Buchhaltung')}
-    ${item('team','👷','Team')}
-    ${item('einstellungen','⚙️','Einstellungen')}
-    ${item('anleitung','📖','Anleitung')}
+  // Tools
+  html += `<div class="nav-section">
+    <div class="nav-section-title">WERKZEUGE</div>
+    ${navItem('rechner','🔢','Rechner')}
+    ${navItem('normen','📋','Normen')}
   </div>`;
+
+  // Kapitel 3 - Lager & Material
+  html += `<div class="nav-section">
+    <div class="nav-section-title">KAP. 3 – LAGER</div>
+    ${folder('k3','📦','Lager & Material',[
+      {page:'lager',     icon:'📦', label:'Lager'},
+      {page:'bestellungen',icon:'🛒', label:'Bestellungen'},
+    ])}
+  </div>`;
+
+  // Kapitel 4 - Projektmanagement
+  html += `<div class="nav-section">
+    <div class="nav-section-title">KAP. 4 – PROJEKTE</div>
+    ${folder('k4','🏗️','Projektmanagement',[
+      {page:'projekte', icon:'📁', label:'Projekte'},
+      {page:'auftraege',icon:'📝', label:'Aufträge'},
+      {page:'journal',  icon:'📔', label:'Tagesberichte'},
+      {page:'kalender', icon:'📅', label:'Kalender'},
+      {page:'kunden',   icon:'👥', label:'Kunden'},
+    ])}
+  </div>`;
+
+  // Kapitel 5 - Prüfung & Messung
+  html += `<div class="nav-section">
+    <div class="nav-section-title">KAP. 5 – PRÜFUNG</div>
+    ${folder('k5','🔍','Prüfung & Messung',[
+      {page:'pruefung',   icon:'🔍', label:'Prüfungen'},
+      {page:'messgeraete',icon:'🔧', label:'Messgeräte'},
+    ])}
+  </div>`;
+
+  // Kapitel 7 - Buchhaltung (nur Chef)
+  if (isChef) {
+    html += `<div class="nav-section">
+      <div class="nav-section-title">KAP. 7 – FINANZEN</div>
+      ${folder('k7','💶','Buchhaltung',[
+        {page:'kva',        icon:'📋', label:'KVA / Kostenv.'},
+        {page:'angebote',   icon:'📄', label:'Angebote'},
+        {page:'rechnungen', icon:'💶', label:'Rechnungen'},
+        {page:'finanzen',   icon:'📊', label:'Finanzen'},
+        {page:'buchhaltung',icon:'📊', label:'Buchhaltung'},
+      ])}
+    </div>`;
+  }
+
+  // Team + Einstellungen (nur Chef)
+  if (isChef) {
+    html += `<div class="nav-section">
+      <div class="nav-section-title">TEAM</div>
+      ${navItem('team','👷','Team')}
+      ${navItem('chat','💬','Chat')}
+    </div>`;
+    html += `<div class="nav-section">
+      <div class="nav-section-title">SYSTEM</div>
+      ${navItem('einstellungen','⚙️','Einstellungen')}
+      ${navItem('anleitung','📖','Anleitung')}
+    </div>`;
+  } else {
+    html += `<div class="nav-section">
+      <div class="nav-section-title">SONSTIGES</div>
+      ${navItem('chat','💬','Chat')}
+      ${navItem('anleitung','📖','Anleitung')}
+    </div>`;
   }
 
   document.getElementById('sidebar-nav').innerHTML = html;
@@ -981,8 +1035,7 @@ function showPage(page) {
     pruefung:'title_protocols', messgeraete:'title_devices',
     team:'title_team', chat:'title_chat',
     kva:'title_kva', angebote:'title_quotes', rechnungen:'title_invoices', finanzen:'title_finances', buchhaltung:'title_buchhaltung',
-    einstellungen:'title_settings', anleitung:'title_anleitung',
-    ablage:'📁 Ablage – Alle Bereiche'
+    einstellungen:'title_settings', anleitung:'title_anleitung'
   };
   document.getElementById('page-title').textContent = t(titles[page]) || page;
   renderSidebar();
@@ -996,8 +1049,7 @@ function showPage(page) {
     team: teamPage, chat: chatPage,
     kva: kvaPage, angebote: angebotePage, rechnungen: rechnungenPage, finanzen: finanzPage, buchhaltung: buchhaltungPage,
     einstellungen: einstellungenPage,
-    anleitung: anleitungPage,
-    ablage: ablagePage
+    anleitung: anleitungPage
   };
 
   if (pages[page]) {
@@ -3528,75 +3580,6 @@ function finanzPage() {
       </table>
     </div>
   </div>`;
-}
-
-// ===== ABLAGE =====
-function ablagePage() {
-  const role = currentUser ? currentUser.rolle : null;
-  const isChef = !role || role === 'Chef' || role === 'Admin';
-
-  function folderCard(icon, title, color, items) {
-    const itemsHtml = items.map(function(it) {
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:20px">${it.icon}</span>
-          <span style="font-size:14px;font-weight:600;color:var(--text)">${it.label}</span>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-sm btn-primary" onclick="showPage('${it.page}')" title="Öffnen">📂 Öffnen</button>
-          ${it.print ? `<button class="btn btn-sm btn-secondary" onclick="${it.print}" title="Drucken">🖨️</button>` : ''}
-          ${it.export ? `<button class="btn btn-sm btn-secondary" onclick="${it.export}" title="Exportieren">📊</button>` : ''}
-        </div>
-      </div>`;
-    }).join('');
-
-    return `<div class="card" style="border-top:4px solid ${color}">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border)">
-        <span style="font-size:28px">${icon}</span>
-        <span style="font-size:16px;font-weight:800;color:var(--text)">${title}</span>
-      </div>
-      ${itemsHtml}
-    </div>`;
-  }
-
-  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">`;
-
-  html += folderCard('📦','Kapitel 3 – Lager & Material','#f59e0b',[
-    {page:'lager',        icon:'📦', label:'Lager / Bestand',     export:'exportExcel()'},
-    {page:'bestellungen', icon:'🛒', label:'Bestellungen'},
-  ]);
-
-  html += folderCard('🏗️','Kapitel 4 – Projektmanagement','#3b82f6',[
-    {page:'projekte',  icon:'📁', label:'Projekte'},
-    {page:'auftraege', icon:'📝', label:'Aufträge'},
-    {page:'journal',   icon:'📔', label:'Tagesberichte'},
-    {page:'kalender',  icon:'📅', label:'Kalender'},
-    {page:'kunden',    icon:'👥', label:'Kunden'},
-  ]);
-
-  html += folderCard('🔍','Kapitel 5 – Prüfung & Messung','#8b5cf6',[
-    {page:'pruefung',    icon:'🔍', label:'Prüfprotokolle'},
-    {page:'messgeraete', icon:'🔧', label:'Messgeräte'},
-  ]);
-
-  if (isChef) {
-    html += folderCard('💶','Kapitel 7 – Buchhaltung','#10b981',[
-      {page:'kva',         icon:'📋', label:'KVA / Kostenvoranschlag'},
-      {page:'angebote',    icon:'📄', label:'Angebote'},
-      {page:'rechnungen',  icon:'💶', label:'Rechnungen'},
-      {page:'finanzen',    icon:'📊', label:'Finanzen'},
-      {page:'buchhaltung', icon:'📊', label:'Buchhaltung'},
-    ]);
-
-    html += folderCard('👥','Team & System','#6366f1',[
-      {page:'team',         icon:'👷', label:'Mitarbeiter / Team'},
-      {page:'profil',       icon:'👤', label:'Mein Profil'},
-      {page:'einstellungen',icon:'⚙️', label:'Einstellungen'},
-    ]);
-  }
-
-  html += `</div>`;
-  return html;
 }
 
 // ===== EINSTELLUNGEN =====
