@@ -631,6 +631,7 @@ const TRANSLATIONS = {
     nav_quotes:'Angebote', nav_invoices:'Rechnungen', nav_finances:'Finanzen', nav_buchhaltung:'Buchhaltung Excel',
     nav_settings:'Einstellungen', nav_anleitung:'App Anleitung', nav_journal:'Journal Übersicht',
     nav_kva:'Kostenvoranschlag', nav_kva_rechnung:'KVA & Rechnung',
+    nav_speicherplatz:'Speicher Platz',
     title_anleitung:'App Anleitung',
     // Page titles
     title_dashboard:'Dashboard', title_profil:'Mein Profil', title_notifications:'Benachrichtigungen',
@@ -858,33 +859,106 @@ function renderSidebar() {
     </div>`;
   }).join('');
 
-  const mainFolderHTML = `<div class="nav-folder nav-folder-main">
-    <div class="nav-folder-header" onclick="toggleFolder('main_folder')">
-      <span class="nav-folder-icon">${mainOpen?'📂':'📁'}</span>
-      <span class="nav-folder-label">Alle Bereiche</span>
-      <span class="nav-folder-arrow" style="transform:rotate(${mainOpen?'0deg':'-90deg'})">▼</span>
-    </div>
-    <div style="display:${mainOpen?'block':'none'};padding:4px 0 4px 10px">
-      ${subHTML}
-    </div>
-  </div>`;
-
-  const topSections = [
-    {section:'nav_overview', items:[{page:'dashboard',icon:'🏠',key:'nav_dashboard'}]},
+  const nav = [
+    {section:'nav_overview', items:[{page:'dashboard',icon:'🏠',key:'nav_dashboard'},{page:'speicherplatz',icon:'🗂️',key:'nav_speicherplatz'}]},
     {section:'nav_basic', items:[{page:'profil',icon:'👤',key:'nav_profil'},{page:'benachrichtigungen',icon:'🔔',key:'nav_notifications'}]},
     {section:'nav_tools', items:[{page:'rechner',icon:'🔢',key:'nav_calc'},{page:'normen',icon:'📋',key:'nav_norms'}]},
-  ];
-  const bottomSections = [
+    {section:'nav_warehouse', items:[{page:'lager',icon:'📦',key:'nav_warehouse2'},{page:'bestellungen',icon:'🛒',key:'nav_orders'}]},
+    {section:'nav_projects', items:[{page:'projekte',icon:'📁',key:'nav_projects2'},{page:'auftraege',icon:'📝',key:'nav_tasks'},{page:'journal',icon:'📋',key:'nav_journal'},{page:'kalender',icon:'📅',key:'nav_calendar'},{page:'kunden',icon:'👥',key:'nav_customers'}]},
+    {section:'nav_testing', items:[{page:'pruefung',icon:'🔍',key:'nav_protocols'},{page:'messgeraete',icon:'🔧',key:'nav_devices'}]},
+    {section:'nav_team', items:[{page:'team',icon:'👷',key:'nav_team2'},{page:'chat',icon:'💬',key:'nav_chat'}]},
+    {section:'nav_finance', items:[{page:'kva',icon:'📋',key:'nav_kva'},{page:'angebote',icon:'📄',key:'nav_quotes'},{page:'rechnungen',icon:'💶',key:'nav_invoices'},{page:'finanzen',icon:'📊',key:'nav_finances'},{page:'buchhaltung',icon:'📊',key:'nav_buchhaltung'}]},
     {section:'nav_comfort', items:[{page:'einstellungen',icon:'⚙️',key:'nav_settings'}]},
     {section:'nav_guide', items:[{page:'anleitung',icon:'📖',key:'nav_anleitung'}]},
   ];
-  const renderFlat = arr => arr.map(s => {
-    const vis = s.items.filter(i => isChef || !chefPages.has(i.page));
-    if (!vis.length) return '';
-    return `<div class="nav-section"><div class="nav-section-title">${t(s.section)}</div>${vis.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}</div>`;
-  }).join('');
+  document.getElementById('sidebar-nav').innerHTML = nav
+    .filter(s => isChef || !['nav_finance','nav_team'].includes(s.section))
+    .map(s=>`<div class="nav-section"><div class="nav-section-title">${t(s.section)}</div>${s.items.filter(i=>isChef||!chefPages.has(i.page)).map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}</div>`).join('');
+}
 
-  document.getElementById('sidebar-nav').innerHTML = renderFlat(topSections) + mainFolderHTML + renderFlat(bottomSections);
+// ===== SPEICHER PLATZ =====
+let spOpenFolder = null;
+
+function speicherPlatzPage() {
+  const role = currentUser ? currentUser.rolle : null;
+  const isChef = !role || role === 'Chef' || role === 'Admin';
+  const chefPages = new Set(['rechnungen','angebote','kva','buchhaltung','finanzen','team','einstellungen','kunden']);
+
+  const folders = [
+    {id:'lager_mat', icon:'📦', label:'Lager & Material', color:'#f59e0b', bg:'rgba(245,158,11,0.12)', items:[
+      {page:'lager', icon:'📦', label:'Lager'},
+      {page:'bestellungen', icon:'🛒', label:'Bestellungen'},
+    ]},
+    {id:'projekte_mgmt', icon:'📁', label:'Projektmanagement', color:'#3b82f6', bg:'rgba(59,130,246,0.12)', items:[
+      {page:'projekte', icon:'📁', label:'Projekte'},
+      {page:'auftraege', icon:'📝', label:'Aufträge'},
+      {page:'journal', icon:'📋', label:'Journal'},
+      {page:'kalender', icon:'📅', label:'Kalender'},
+      {page:'kunden', icon:'👥', label:'Kunden'},
+    ]},
+    {id:'pruef_mes', icon:'🔍', label:'Prüfung & Messung', color:'#10b981', bg:'rgba(16,185,129,0.12)', items:[
+      {page:'pruefung', icon:'🔍', label:'Prüfprotokolle'},
+      {page:'messgeraete', icon:'🔧', label:'Messgeräte'},
+    ]},
+    {id:'team_komm', icon:'👷', label:'Team & Kommunikation', color:'#8b5cf6', bg:'rgba(139,92,246,0.12)', chefOnly:true, items:[
+      {page:'team', icon:'👷', label:'Team'},
+      {page:'chat', icon:'💬', label:'Chat'},
+    ]},
+    {id:'buchhalt', icon:'💶', label:'Buchhaltung', color:'#ef4444', bg:'rgba(239,68,68,0.12)', chefOnly:true, items:[
+      {page:'kva', icon:'📋', label:'Kostenvoranschlag'},
+      {page:'angebote', icon:'📄', label:'Angebote'},
+      {page:'rechnungen', icon:'💶', label:'Rechnungen'},
+      {page:'finanzen', icon:'📊', label:'Finanzen'},
+      {page:'buchhaltung', icon:'📊', label:'Buchhaltung Excel'},
+    ]},
+  ].filter(f => isChef || !f.chefOnly);
+
+  const openF = spOpenFolder;
+
+  if (openF) {
+    const folder = folders.find(f => f.id === openF);
+    if (!folder) { spOpenFolder = null; return speicherPlatzPage(); }
+    const visItems = folder.items.filter(i => isChef || !chefPages.has(i.page));
+    return `
+    <div style="margin-bottom:20px">
+      <button class="btn btn-secondary" onclick="spOpenFolder=null;showPage('speicherplatz')" style="font-size:13px">
+        ← Zurück
+      </button>
+      <span style="margin-left:12px;font-size:18px;font-weight:700">${folder.icon} ${folder.label}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px">
+      ${visItems.map(item=>`
+        <div onclick="showPage('${item.page}')" style="background:var(--bg2);border:2px solid var(--border);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:10px"
+          onmouseover="this.style.borderColor='${folder.color}';this.style.background='${folder.bg}'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg2)'">
+          <span style="font-size:36px">${item.icon}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text)">${item.label}</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  return `
+  <div style="margin-bottom:20px">
+    <h2 style="font-size:20px;font-weight:700">🗂️ Speicher Platz</h2>
+    <p style="color:var(--text2);font-size:13px;margin-top:4px">Ordner öffnen und zur gewünschten Seite navigieren</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px">
+    ${folders.map(f=>`
+      <div onclick="spOpenFolder='${f.id}';showPage('speicherplatz')"
+        style="background:var(--bg2);border:2px solid var(--border);border-radius:14px;padding:28px 20px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center"
+        onmouseover="this.style.borderColor='${f.color}';this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
+        <div style="position:relative">
+          <span style="font-size:56px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))">📂</span>
+          <span style="position:absolute;bottom:0;right:-6px;font-size:22px">${f.icon}</span>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${f.label}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:3px">${f.items.length} Seiten</div>
+        </div>
+        <div style="background:${f.bg};color:${f.color};border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600">Öffnen →</div>
+      </div>`).join('')}
+  </div>`;
 }
 
 function updateTopbarLang() {
@@ -1023,7 +1097,8 @@ function showPage(page) {
     kva: kvaPage, angebote: angebotePage, rechnungen: rechnungenPage, finanzen: finanzPage, buchhaltung: buchhaltungPage,
     einstellungen: einstellungenPage,
     anleitung: anleitungPage,
-    ablage: ablagePage
+    ablage: ablagePage,
+    speicherplatz: speicherPlatzPage
   };
 
   if (pages[page]) {
