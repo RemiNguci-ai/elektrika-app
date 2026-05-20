@@ -1095,7 +1095,7 @@ function dashboard() {
     </div>
     <div class="stat-card" style="border-top:4px solid var(--primary);padding:18px 16px">
       <div style="font-size:36px;margin-bottom:4px">📝</div>
-      <div class="stat-value" style="font-size:36px;font-weight:900;color:var(--primary)">${auftraege.filter(a=>a.status==='Offen').length}</div>
+      <div class="stat-value" style="font-size:36px;font-weight:900;color:var(--primary)">${auftraege.filter(a=>a.status!=='Abgeschlossen').length}</div>
       <div class="stat-label" style="font-weight:700;font-size:13px;margin-top:4px">${t('open_tasks')}</div>
     </div>
     <div class="stat-card" style="border-top:4px solid var(--danger);padding:18px 16px">
