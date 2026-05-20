@@ -46,14 +46,18 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 #sidebar-header p { font-size: 11px; color: var(--text2); margin-top: 2px; }
 .nav-section { padding: 8px 0; border-bottom: 1px solid var(--border); }
 .nav-section-title { font-size: var(--sb-title-size); font-weight: 800; color: var(--sb-title-color); text-transform: uppercase; letter-spacing: var(--sb-title-letter); padding: 10px 16px 4px; border-left: 3px solid var(--sb-title-color); margin-left: 8px; }
-.nav-folder { margin:4px 8px; border-radius:8px; overflow:hidden; }
+.nav-folder { border-radius:8px; overflow:visible; }
 .nav-folder-header { display:flex; align-items:center; gap:8px; padding:9px 12px; font-size:12px; font-weight:700; color:#1a1a1a; background:linear-gradient(135deg,#f5c842,#e6a800); border-radius:8px; cursor:pointer; user-select:none; -webkit-user-select:none; box-shadow:0 2px 6px rgba(0,0,0,0.18); margin-bottom:2px; }
 .nav-folder-header:hover { background:linear-gradient(135deg,#ffd84d,#f0b300); }
 .nav-folder-icon { font-size:20px; line-height:1; }
 .nav-folder-label { flex:1; font-size:11px; letter-spacing:0.3px; }
 .nav-folder-arrow { font-size:10px; display:inline-block; transition:transform 0.2s; color:#7a5a00; }
-.nav-folder-items { background:var(--bg2); border-radius:0 0 8px 8px; margin-top:-4px; padding-top:4px; }
-.nav-folder-items .nav-item { padding-left:32px; }
+.nav-folder-main { margin:8px 8px 4px; }
+.nav-folder-inner { margin:3px 0; border-radius:6px; overflow:hidden; }
+.nav-folder-inner > .nav-folder-header { font-size:10.5px; padding:7px 10px; background:linear-gradient(135deg,#fde68a,#f59e0b); box-shadow:0 1px 3px rgba(0,0,0,0.12); border-radius:6px; }
+.nav-folder-inner > .nav-folder-header:hover { background:linear-gradient(135deg,#fef08a,#fbbf24); }
+.nav-folder-inner .nav-folder-items { background:var(--bg2); border-radius:0 0 6px 6px; }
+.nav-folder-inner .nav-folder-items .nav-item { padding-left:36px; }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; border-radius: 0; transition: all .15s; color: var(--sb-item-color); font-size: var(--sb-item-size); font-weight: var(--sb-item-weight, 400); }
 .nav-item:hover { background: var(--bg3); color: var(--text); }
 .nav-item.active { background: var(--sb-active-bg); color: var(--sb-active-color); border-right: 3px solid var(--sb-active-color); }
@@ -806,7 +810,7 @@ function mapLink(adresse) {
   </span>`;
 }
 
-let openFolders = new Set(['folder_warehouse','folder_projects','folder_testing','folder_team','folder_finance']);
+let openFolders = new Set(['main_folder','folder_warehouse','folder_projects','folder_testing','folder_team','folder_finance']);
 
 function toggleFolder(id) {
   if (openFolders.has(id)) openFolders.delete(id);
@@ -820,49 +824,67 @@ function renderSidebar() {
   const isChef = !role || role === 'Chef' || role === 'Admin';
   const chefPages = new Set(['rechnungen','angebote','kva','buchhaltung','finanzen','team','einstellungen','kunden']);
 
-  const sections = [
-    {type:'flat', section:'nav_overview', items:[{page:'dashboard',icon:'🏠',key:'nav_dashboard'}]},
-    {type:'flat', section:'nav_basic', items:[{page:'profil',icon:'👤',key:'nav_profil'},{page:'benachrichtigungen',icon:'🔔',key:'nav_notifications'}]},
-    {type:'flat', section:'nav_tools', items:[{page:'rechner',icon:'🔢',key:'nav_calc'},{page:'normen',icon:'📋',key:'nav_norms'}]},
-    {type:'folder', id:'folder_warehouse', label:'Lager & Material', items:[{page:'lager',icon:'📦',key:'nav_warehouse2'},{page:'bestellungen',icon:'🛒',key:'nav_orders'}]},
-    {type:'folder', id:'folder_projects', label:'Projektmanagement', items:[{page:'projekte',icon:'📁',key:'nav_projects2'},{page:'auftraege',icon:'📝',key:'nav_tasks'},{page:'journal',icon:'📋',key:'nav_journal'},{page:'kalender',icon:'📅',key:'nav_calendar'},{page:'kunden',icon:'👥',key:'nav_customers'}]},
-    {type:'folder', id:'folder_testing', label:'Prüfung & Messung', items:[{page:'pruefung',icon:'🔍',key:'nav_protocols'},{page:'messgeraete',icon:'🔧',key:'nav_devices'}]},
-    {type:'folder', id:'folder_team', label:'Team & Kommunikation', items:[{page:'team',icon:'👷',key:'nav_team2'},{page:'chat',icon:'💬',key:'nav_chat'}]},
-    {type:'folder', id:'folder_finance', label:'Buchhaltung', items:[{page:'kva',icon:'📋',key:'nav_kva'},{page:'angebote',icon:'📄',key:'nav_quotes'},{page:'rechnungen',icon:'💶',key:'nav_invoices'},{page:'finanzen',icon:'📊',key:'nav_finances'},{page:'buchhaltung',icon:'📊',key:'nav_buchhaltung'}]},
-    {type:'flat', section:'nav_comfort', items:[{page:'einstellungen',icon:'⚙️',key:'nav_settings'}]},
-    {type:'flat', section:'nav_guide', items:[{page:'anleitung',icon:'📖',key:'nav_anleitung'}]},
+  const subFolders = [
+    {id:'folder_warehouse', label:'Lager & Material', items:[{page:'lager',icon:'📦',key:'nav_warehouse2'},{page:'bestellungen',icon:'🛒',key:'nav_orders'}]},
+    {id:'folder_projects', label:'Projektmanagement', items:[{page:'projekte',icon:'📁',key:'nav_projects2'},{page:'auftraege',icon:'📝',key:'nav_tasks'},{page:'journal',icon:'📋',key:'nav_journal'},{page:'kalender',icon:'📅',key:'nav_calendar'},{page:'kunden',icon:'👥',key:'nav_customers'}]},
+    {id:'folder_testing', label:'Prüfung & Messung', items:[{page:'pruefung',icon:'🔍',key:'nav_protocols'},{page:'messgeraete',icon:'🔧',key:'nav_devices'}]},
+    {id:'folder_team', label:'Team & Kommunikation', items:[{page:'team',icon:'👷',key:'nav_team2'},{page:'chat',icon:'💬',key:'nav_chat'}]},
+    {id:'folder_finance', label:'Buchhaltung', items:[{page:'kva',icon:'📋',key:'nav_kva'},{page:'angebote',icon:'📄',key:'nav_quotes'},{page:'rechnungen',icon:'💶',key:'nav_invoices'},{page:'finanzen',icon:'📊',key:'nav_finances'},{page:'buchhaltung',icon:'📊',key:'nav_buchhaltung'}]},
   ];
 
-  const html = sections.map(s => {
-    if (s.type === 'flat') {
-      const visItems = s.items.filter(i => isChef || !chefPages.has(i.page));
-      if (!visItems.length) return '';
-      return `<div class="nav-section">
-        <div class="nav-section-title">${t(s.section)}</div>
-        ${visItems.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}
-      </div>`;
-    } else {
-      const visItems = s.items.filter(i => isChef || !chefPages.has(i.page));
-      if (!visItems.length) return '';
-      // Auto-open folder wenn aktive Seite darin ist
-      if (visItems.some(i => i.page === currentPage)) openFolders.add(s.id);
-      const open = openFolders.has(s.id);
-      const folderIcon = open ? '📂' : '📁';
-      const labelText = s.label;
-      return `<div class="nav-folder">
-        <div class="nav-folder-header" onclick="toggleFolder('${s.id}')">
-          <span class="nav-folder-icon">${folderIcon}</span>
-          <span class="nav-folder-label">${labelText}</span>
-          <span class="nav-folder-arrow" style="transform:rotate(${open?'0deg':'-90deg'})">▼</span>
-        </div>
-        <div class="nav-folder-items" style="display:${open?'block':'none'}">
-          ${visItems.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}
-        </div>
-      </div>`;
+  // Auto-open Ordner der aktuellen Seite
+  subFolders.forEach(sf => {
+    if (sf.items.some(i => i.page === currentPage)) {
+      openFolders.add(sf.id);
+      openFolders.add('main_folder');
     }
+  });
+
+  const mainOpen = openFolders.has('main_folder');
+
+  const subHTML = subFolders.map(sf => {
+    const visItems = sf.items.filter(i => isChef || !chefPages.has(i.page));
+    if (!visItems.length) return '';
+    const sfOpen = openFolders.has(sf.id);
+    return `<div class="nav-folder nav-folder-inner">
+      <div class="nav-folder-header" onclick="toggleFolder('${sf.id}')">
+        <span class="nav-folder-icon">${sfOpen?'📂':'📁'}</span>
+        <span class="nav-folder-label">${sf.label}</span>
+        <span class="nav-folder-arrow" style="transform:rotate(${sfOpen?'0deg':'-90deg'})">▼</span>
+      </div>
+      <div class="nav-folder-items" style="display:${sfOpen?'block':'none'}">
+        ${visItems.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}
+      </div>
+    </div>`;
   }).join('');
 
-  document.getElementById('sidebar-nav').innerHTML = html;
+  const mainFolderHTML = `<div class="nav-folder nav-folder-main">
+    <div class="nav-folder-header" onclick="toggleFolder('main_folder')">
+      <span class="nav-folder-icon">${mainOpen?'📂':'📁'}</span>
+      <span class="nav-folder-label">Alle Bereiche</span>
+      <span class="nav-folder-arrow" style="transform:rotate(${mainOpen?'0deg':'-90deg'})">▼</span>
+    </div>
+    <div style="display:${mainOpen?'block':'none'};padding:4px 0 4px 10px">
+      ${subHTML}
+    </div>
+  </div>`;
+
+  const topSections = [
+    {section:'nav_overview', items:[{page:'dashboard',icon:'🏠',key:'nav_dashboard'}]},
+    {section:'nav_basic', items:[{page:'profil',icon:'👤',key:'nav_profil'},{page:'benachrichtigungen',icon:'🔔',key:'nav_notifications'}]},
+    {section:'nav_tools', items:[{page:'rechner',icon:'🔢',key:'nav_calc'},{page:'normen',icon:'📋',key:'nav_norms'}]},
+  ];
+  const bottomSections = [
+    {section:'nav_comfort', items:[{page:'einstellungen',icon:'⚙️',key:'nav_settings'}]},
+    {section:'nav_guide', items:[{page:'anleitung',icon:'📖',key:'nav_anleitung'}]},
+  ];
+  const renderFlat = arr => arr.map(s => {
+    const vis = s.items.filter(i => isChef || !chefPages.has(i.page));
+    if (!vis.length) return '';
+    return `<div class="nav-section"><div class="nav-section-title">${t(s.section)}</div>${vis.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}</div>`;
+  }).join('');
+
+  document.getElementById('sidebar-nav').innerHTML = renderFlat(topSections) + mainFolderHTML + renderFlat(bottomSections);
 }
 
 function updateTopbarLang() {
@@ -3221,13 +3243,32 @@ function deleteAngebot(id){confirmDelete(currentLang==='sq'?'Oferta do të fshih
 function downloadAngebotPDF(id) {
   const a = DB.get('angebote').find(x=>x.id===id);
   if(!a) return;
+  const defaultName = ('Angebot_' + a.nummer + '_' + a.kunde).replace(/[^a-zA-Z0-9_\-äöüÄÖÜß]/g,'_');
+  openModal('📄 PDF speichern', `
+    <div class="form-group">
+      <label>Dateiname (ohne .pdf)</label>
+      <input id="pdf-name-input" value="${defaultName}" style="font-size:14px;font-weight:600">
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:12px;font-size:12px;color:var(--text2);margin-top:8px">
+      💡 Im nächsten Schritt öffnet sich der Druckdialog.<br>
+      Wähle dort <strong>„Als PDF speichern"</strong> und dann den <strong>Speicherort</strong>.
+    </div>
+  `, [
+    {label:'Abbrechen', action:'closeModal()'},
+    {label:'📄 PDF erstellen', primary:true, action:`closeModal();_openAngebotPDF(${id}, document.getElementById('pdf-name-input').value)`}
+  ]);
+  setTimeout(()=>{ const el=document.getElementById('pdf-name-input'); if(el){el.focus();el.select();} },100);
+}
+function _openAngebotPDF(id, filename) {
+  const a = DB.get('angebote').find(x=>x.id===id);
+  if(!a) return;
   const p = DB.getObj('profil',{});
   const netto  = parseFloat(a.betrag)||0;
   const mwstB  = netto * 0.19;
   const brutto = netto + mwstB;
   const scColor = a.status==='Angenommen'?'#16a34a':a.status==='Abgelehnt'?'#dc2626':'#d97706';
   const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">
-  <title>Angebot ${a.nummer}</title>
+  <title>${filename||('Angebot_'+a.nummer)}</title>
   <style>
     @page{size:A4;margin:18mm 15mm}
     *{box-sizing:border-box;margin:0;padding:0}
