@@ -46,6 +46,11 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 #sidebar-header p { font-size: 11px; color: var(--text2); margin-top: 2px; }
 .nav-section { padding: 8px 0; border-bottom: 1px solid var(--border); }
 .nav-section-title { font-size: var(--sb-title-size); font-weight: 800; color: var(--sb-title-color); text-transform: uppercase; letter-spacing: var(--sb-title-letter); padding: 10px 16px 4px; border-left: 3px solid var(--sb-title-color); margin-left: 8px; }
+.nav-folder { border-bottom: 1px solid var(--border); }
+.nav-folder-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 10px 13px; font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; border-left:3px solid var(--primary); margin-left:8px; margin-top:4px; margin-bottom:2px; border-radius:0 6px 6px 0; user-select:none; -webkit-user-select:none; }
+.nav-folder-header:hover { background:var(--bg3); }
+.nav-folder-arrow { font-size:10px; display:inline-block; transition:transform 0.2s; }
+.nav-folder-items .nav-item { padding-left:30px; }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; border-radius: 0; transition: all .15s; color: var(--sb-item-color); font-size: var(--sb-item-size); font-weight: var(--sb-item-weight, 400); }
 .nav-item:hover { background: var(--bg3); color: var(--text); }
 .nav-item.active { background: var(--sb-active-bg); color: var(--sb-active-color); border-right: 3px solid var(--sb-active-color); }
@@ -798,30 +803,60 @@ function mapLink(adresse) {
   </span>`;
 }
 
+let openFolders = new Set(['folder_warehouse','folder_projects','folder_testing','folder_team','folder_finance']);
+
+function toggleFolder(id) {
+  if (openFolders.has(id)) openFolders.delete(id);
+  else openFolders.add(id);
+  renderSidebar();
+}
+
 function renderSidebar() {
-  const nav = [
-    {section:'nav_overview', items:[{page:'dashboard',icon:'🏠',key:'nav_dashboard'}]},
-    {section:'nav_basic', items:[{page:'profil',icon:'👤',key:'nav_profil'},{page:'benachrichtigungen',icon:'🔔',key:'nav_notifications'}]},
-    {section:'nav_tools', items:[{page:'rechner',icon:'🔢',key:'nav_calc'},{page:'normen',icon:'📋',key:'nav_norms'}]},
-    {section:'nav_warehouse', items:[{page:'lager',icon:'📦',key:'nav_warehouse2'},{page:'bestellungen',icon:'🛒',key:'nav_orders'}]},
-    {section:'nav_projects', items:[{page:'projekte',icon:'📁',key:'nav_projects2'},{page:'auftraege',icon:'📝',key:'nav_tasks'},{page:'journal',icon:'📋',key:'nav_journal'},{page:'kalender',icon:'📅',key:'nav_calendar'},{page:'kunden',icon:'👥',key:'nav_customers'}]},
-    {section:'nav_testing', items:[{page:'pruefung',icon:'🔍',key:'nav_protocols'},{page:'messgeraete',icon:'🔧',key:'nav_devices'}]},
-    {section:'nav_team', items:[{page:'team',icon:'👷',key:'nav_team2'},{page:'chat',icon:'💬',key:'nav_chat'}]},
-    {section:'nav_finance', items:[{page:'kva',icon:'📋',key:'nav_kva'},{page:'angebote',icon:'📄',key:'nav_quotes'},{page:'rechnungen',icon:'💶',key:'nav_invoices'},{page:'finanzen',icon:'📊',key:'nav_finances'},{page:'buchhaltung',icon:'📊',key:'nav_buchhaltung'}]},
-    {section:'nav_comfort', items:[{page:'einstellungen',icon:'⚙️',key:'nav_settings'}]},
-    {section:'nav_guide', items:[{page:'anleitung',icon:'📖',key:'nav_anleitung'}]},
-  ];
   const custIcons = getSbIcons();
   const role = currentUser ? currentUser.rolle : null;
   const isChef = !role || role === 'Chef' || role === 'Admin';
-  const chefOnly = ['nav_finance','nav_team'];
-  document.getElementById('sidebar-nav').innerHTML = nav
-    .filter(s => isChef || !chefOnly.includes(s.section))
-    .map(s=>`
-    <div class="nav-section">
-      <div class="nav-section-title">${t(s.section)}</div>
-      ${s.items.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}
-    </div>`).join('');
+  const chefPages = new Set(['rechnungen','angebote','kva','buchhaltung','finanzen','team','einstellungen','kunden']);
+
+  const sections = [
+    {type:'flat', section:'nav_overview', items:[{page:'dashboard',icon:'🏠',key:'nav_dashboard'}]},
+    {type:'flat', section:'nav_basic', items:[{page:'profil',icon:'👤',key:'nav_profil'},{page:'benachrichtigungen',icon:'🔔',key:'nav_notifications'}]},
+    {type:'flat', section:'nav_tools', items:[{page:'rechner',icon:'🔢',key:'nav_calc'},{page:'normen',icon:'📋',key:'nav_norms'}]},
+    {type:'folder', id:'folder_warehouse', label:'📁 Kap. 3 – Lager & Material', items:[{page:'lager',icon:'📦',key:'nav_warehouse2'},{page:'bestellungen',icon:'🛒',key:'nav_orders'}]},
+    {type:'folder', id:'folder_projects', label:'📁 Kap. 4 – Projektmanagement', items:[{page:'projekte',icon:'📁',key:'nav_projects2'},{page:'auftraege',icon:'📝',key:'nav_tasks'},{page:'journal',icon:'📋',key:'nav_journal'},{page:'kalender',icon:'📅',key:'nav_calendar'},{page:'kunden',icon:'👥',key:'nav_customers'}]},
+    {type:'folder', id:'folder_testing', label:'📁 Kap. 5 – Prüfung & Messung', items:[{page:'pruefung',icon:'🔍',key:'nav_protocols'},{page:'messgeraete',icon:'🔧',key:'nav_devices'}]},
+    {type:'folder', id:'folder_team', label:'📁 Kap. 6 – Team & Kommunikation', items:[{page:'team',icon:'👷',key:'nav_team2'},{page:'chat',icon:'💬',key:'nav_chat'}]},
+    {type:'folder', id:'folder_finance', label:'📁 Kap. 7 – Buchhaltung', items:[{page:'kva',icon:'📋',key:'nav_kva'},{page:'angebote',icon:'📄',key:'nav_quotes'},{page:'rechnungen',icon:'💶',key:'nav_invoices'},{page:'finanzen',icon:'📊',key:'nav_finances'},{page:'buchhaltung',icon:'📊',key:'nav_buchhaltung'}]},
+    {type:'flat', section:'nav_comfort', items:[{page:'einstellungen',icon:'⚙️',key:'nav_settings'}]},
+    {type:'flat', section:'nav_guide', items:[{page:'anleitung',icon:'📖',key:'nav_anleitung'}]},
+  ];
+
+  const html = sections.map(s => {
+    if (s.type === 'flat') {
+      const visItems = s.items.filter(i => isChef || !chefPages.has(i.page));
+      if (!visItems.length) return '';
+      return `<div class="nav-section">
+        <div class="nav-section-title">${t(s.section)}</div>
+        ${visItems.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}
+      </div>`;
+    } else {
+      const visItems = s.items.filter(i => isChef || !chefPages.has(i.page));
+      if (!visItems.length) return '';
+      // Auto-open folder wenn aktive Seite darin ist
+      if (visItems.some(i => i.page === currentPage)) openFolders.add(s.id);
+      const open = openFolders.has(s.id);
+      return `<div class="nav-folder">
+        <div class="nav-folder-header" onclick="toggleFolder('${s.id}')">
+          <span>${s.label}</span>
+          <span class="nav-folder-arrow" style="transform:rotate(${open?'0deg':'-90deg'})">▼</span>
+        </div>
+        <div class="nav-folder-items" style="display:${open?'block':'none'}">
+          ${visItems.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}
+        </div>
+      </div>`;
+    }
+  }).join('');
+
+  document.getElementById('sidebar-nav').innerHTML = html;
 }
 
 function updateTopbarLang() {
