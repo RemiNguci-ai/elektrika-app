@@ -824,11 +824,11 @@ function renderSidebar() {
     {type:'flat', section:'nav_overview', items:[{page:'dashboard',icon:'🏠',key:'nav_dashboard'}]},
     {type:'flat', section:'nav_basic', items:[{page:'profil',icon:'👤',key:'nav_profil'},{page:'benachrichtigungen',icon:'🔔',key:'nav_notifications'}]},
     {type:'flat', section:'nav_tools', items:[{page:'rechner',icon:'🔢',key:'nav_calc'},{page:'normen',icon:'📋',key:'nav_norms'}]},
-    {type:'folder', id:'folder_warehouse', label:'📁 Kap. 3 – Lager & Material', items:[{page:'lager',icon:'📦',key:'nav_warehouse2'},{page:'bestellungen',icon:'🛒',key:'nav_orders'}]},
-    {type:'folder', id:'folder_projects', label:'📁 Kap. 4 – Projektmanagement', items:[{page:'projekte',icon:'📁',key:'nav_projects2'},{page:'auftraege',icon:'📝',key:'nav_tasks'},{page:'journal',icon:'📋',key:'nav_journal'},{page:'kalender',icon:'📅',key:'nav_calendar'},{page:'kunden',icon:'👥',key:'nav_customers'}]},
-    {type:'folder', id:'folder_testing', label:'📁 Kap. 5 – Prüfung & Messung', items:[{page:'pruefung',icon:'🔍',key:'nav_protocols'},{page:'messgeraete',icon:'🔧',key:'nav_devices'}]},
-    {type:'folder', id:'folder_team', label:'📁 Kap. 6 – Team & Kommunikation', items:[{page:'team',icon:'👷',key:'nav_team2'},{page:'chat',icon:'💬',key:'nav_chat'}]},
-    {type:'folder', id:'folder_finance', label:'📁 Kap. 7 – Buchhaltung', items:[{page:'kva',icon:'📋',key:'nav_kva'},{page:'angebote',icon:'📄',key:'nav_quotes'},{page:'rechnungen',icon:'💶',key:'nav_invoices'},{page:'finanzen',icon:'📊',key:'nav_finances'},{page:'buchhaltung',icon:'📊',key:'nav_buchhaltung'}]},
+    {type:'folder', id:'folder_warehouse', label:'Lager & Material', items:[{page:'lager',icon:'📦',key:'nav_warehouse2'},{page:'bestellungen',icon:'🛒',key:'nav_orders'}]},
+    {type:'folder', id:'folder_projects', label:'Projektmanagement', items:[{page:'projekte',icon:'📁',key:'nav_projects2'},{page:'auftraege',icon:'📝',key:'nav_tasks'},{page:'journal',icon:'📋',key:'nav_journal'},{page:'kalender',icon:'📅',key:'nav_calendar'},{page:'kunden',icon:'👥',key:'nav_customers'}]},
+    {type:'folder', id:'folder_testing', label:'Prüfung & Messung', items:[{page:'pruefung',icon:'🔍',key:'nav_protocols'},{page:'messgeraete',icon:'🔧',key:'nav_devices'}]},
+    {type:'folder', id:'folder_team', label:'Team & Kommunikation', items:[{page:'team',icon:'👷',key:'nav_team2'},{page:'chat',icon:'💬',key:'nav_chat'}]},
+    {type:'folder', id:'folder_finance', label:'Buchhaltung', items:[{page:'kva',icon:'📋',key:'nav_kva'},{page:'angebote',icon:'📄',key:'nav_quotes'},{page:'rechnungen',icon:'💶',key:'nav_invoices'},{page:'finanzen',icon:'📊',key:'nav_finances'},{page:'buchhaltung',icon:'📊',key:'nav_buchhaltung'}]},
     {type:'flat', section:'nav_comfort', items:[{page:'einstellungen',icon:'⚙️',key:'nav_settings'}]},
     {type:'flat', section:'nav_guide', items:[{page:'anleitung',icon:'📖',key:'nav_anleitung'}]},
   ];
@@ -848,7 +848,7 @@ function renderSidebar() {
       if (visItems.some(i => i.page === currentPage)) openFolders.add(s.id);
       const open = openFolders.has(s.id);
       const folderIcon = open ? '📂' : '📁';
-      const labelText = s.label.replace(/^📁\s*/,'');
+      const labelText = s.label;
       return `<div class="nav-folder">
         <div class="nav-folder-header" onclick="toggleFolder('${s.id}')">
           <span class="nav-folder-icon">${folderIcon}</span>
