@@ -1,4 +1,4 @@
-const CACHE = 'elektrika-v5';
+﻿const CACHE = 'elektrika-v5';
 const FILES = [
   '/elektrika-app.html',
   '/manifest.json',
