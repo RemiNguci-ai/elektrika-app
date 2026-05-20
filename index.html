@@ -798,25 +798,121 @@ function mapLink(adresse) {
   </span>`;
 }
 
+let _openFolders = JSON.parse(localStorage.getItem('elektrika_folders')||'["k3","k4","k5","k7"]');
+
+function toggleFolder(id) {
+  if (_openFolders.includes(id)) _openFolders = _openFolders.filter(f=>f!==id);
+  else _openFolders.push(id);
+  localStorage.setItem('elektrika_folders', JSON.stringify(_openFolders));
+  renderSidebar();
+}
+
 function renderSidebar() {
-  const nav = [
-    {section:'nav_overview', items:[{page:'dashboard',icon:'🏠',key:'nav_dashboard'}]},
-    {section:'nav_basic', items:[{page:'profil',icon:'👤',key:'nav_profil'},{page:'benachrichtigungen',icon:'🔔',key:'nav_notifications'}]},
-    {section:'nav_tools', items:[{page:'rechner',icon:'🔢',key:'nav_calc'},{page:'normen',icon:'📋',key:'nav_norms'}]},
-    {section:'nav_warehouse', items:[{page:'lager',icon:'📦',key:'nav_warehouse2'},{page:'bestellungen',icon:'🛒',key:'nav_orders'}]},
-    {section:'nav_projects', items:[{page:'projekte',icon:'📁',key:'nav_projects2'},{page:'auftraege',icon:'📝',key:'nav_tasks'},{page:'journal',icon:'📋',key:'nav_journal'},{page:'kalender',icon:'📅',key:'nav_calendar'},{page:'kunden',icon:'👥',key:'nav_customers'}]},
-    {section:'nav_testing', items:[{page:'pruefung',icon:'🔍',key:'nav_protocols'},{page:'messgeraete',icon:'🔧',key:'nav_devices'}]},
-    {section:'nav_team', items:[{page:'team',icon:'👷',key:'nav_team2'},{page:'chat',icon:'💬',key:'nav_chat'}]},
-    {section:'nav_finance', items:[{page:'kva',icon:'📋',key:'nav_kva'},{page:'angebote',icon:'📄',key:'nav_quotes'},{page:'rechnungen',icon:'💶',key:'nav_invoices'},{page:'finanzen',icon:'📊',key:'nav_finances'},{page:'buchhaltung',icon:'📊',key:'nav_buchhaltung'}]},
-    {section:'nav_comfort', items:[{page:'einstellungen',icon:'⚙️',key:'nav_settings'}]},
-    {section:'nav_guide', items:[{page:'anleitung',icon:'📖',key:'nav_anleitung'}]},
-  ];
   const custIcons = getSbIcons();
-  document.getElementById('sidebar-nav').innerHTML = nav.map(s=>`
-    <div class="nav-section">
-      <div class="nav-section-title">${t(s.section)}</div>
-      ${s.items.map(i=>`<div class="nav-item${currentPage===i.page?' active':''}" onclick="showPage('${i.page}')"><span class="nav-icon">${custIcons[i.page]||i.icon}</span> ${t(i.key)}</div>`).join('')}
-    </div>`).join('');
+  const role = currentUser ? currentUser.rolle : null;
+  const isChef = !role || role === 'Chef' || role === 'Admin';
+
+  function navItem(page, icon, label) {
+    return `<div class="nav-item${currentPage===page?' active':''}" onclick="showPage('${page}')" style="padding-left:28px">
+      <span class="nav-icon">${custIcons[page]||icon}</span> ${label}
+    </div>`;
+  }
+
+  function folder(id, icon, label, items) {
+    const open = _openFolders.includes(id);
+    const hasActive = items.some(i=>i.page===currentPage);
+    return `<div>
+      <div onclick="toggleFolder('${id}')" style="display:flex;align-items:center;gap:8px;padding:9px 16px;cursor:pointer;color:var(--text);font-size:13px;font-weight:700;border-left:3px solid ${hasActive?'var(--primary)':'transparent'};background:${hasActive?'var(--bg3)':'transparent'}">
+        <span>${open?'📂':'📁'}</span>
+        <span style="flex:1">${icon} ${label}</span>
+        <span style="font-size:10px;color:var(--muted)">${open?'▲':'▼'}</span>
+      </div>
+      ${open ? items.map(i=>navItem(i.page,i.icon,i.label)).join('') : ''}
+    </div>`;
+  }
+
+  let html = '';
+
+  // Dashboard + Profil
+  html += `<div class="nav-section">
+    <div class="nav-section-title">START</div>
+    ${navItem('dashboard','🏠','Dashboard')}
+    ${navItem('profil','👤','Profil')}
+    ${navItem('benachrichtigungen','🔔','Benachrichtigungen')}
+  </div>`;
+
+  // Tools
+  html += `<div class="nav-section">
+    <div class="nav-section-title">WERKZEUGE</div>
+    ${navItem('rechner','🔢','Rechner')}
+    ${navItem('normen','📋','Normen')}
+  </div>`;
+
+  // Kapitel 3 - Lager & Material
+  html += `<div class="nav-section">
+    <div class="nav-section-title">KAP. 3 – LAGER</div>
+    ${folder('k3','📦','Lager & Material',[
+      {page:'lager',     icon:'📦', label:'Lager'},
+      {page:'bestellungen',icon:'🛒', label:'Bestellungen'},
+    ])}
+  </div>`;
+
+  // Kapitel 4 - Projektmanagement
+  html += `<div class="nav-section">
+    <div class="nav-section-title">KAP. 4 – PROJEKTE</div>
+    ${folder('k4','🏗️','Projektmanagement',[
+      {page:'projekte', icon:'📁', label:'Projekte'},
+      {page:'auftraege',icon:'📝', label:'Aufträge'},
+      {page:'journal',  icon:'📔', label:'Tagesberichte'},
+      {page:'kalender', icon:'📅', label:'Kalender'},
+      {page:'kunden',   icon:'👥', label:'Kunden'},
+    ])}
+  </div>`;
+
+  // Kapitel 5 - Prüfung & Messung
+  html += `<div class="nav-section">
+    <div class="nav-section-title">KAP. 5 – PRÜFUNG</div>
+    ${folder('k5','🔍','Prüfung & Messung',[
+      {page:'pruefung',   icon:'🔍', label:'Prüfungen'},
+      {page:'messgeraete',icon:'🔧', label:'Messgeräte'},
+    ])}
+  </div>`;
+
+  // Kapitel 7 - Buchhaltung (nur Chef)
+  if (isChef) {
+    html += `<div class="nav-section">
+      <div class="nav-section-title">KAP. 7 – FINANZEN</div>
+      ${folder('k7','💶','Buchhaltung',[
+        {page:'kva',        icon:'📋', label:'KVA / Kostenv.'},
+        {page:'angebote',   icon:'📄', label:'Angebote'},
+        {page:'rechnungen', icon:'💶', label:'Rechnungen'},
+        {page:'finanzen',   icon:'📊', label:'Finanzen'},
+        {page:'buchhaltung',icon:'📊', label:'Buchhaltung'},
+      ])}
+    </div>`;
+  }
+
+  // Team + Einstellungen (nur Chef)
+  if (isChef) {
+    html += `<div class="nav-section">
+      <div class="nav-section-title">TEAM</div>
+      ${navItem('team','👷','Team')}
+      ${navItem('chat','💬','Chat')}
+    </div>`;
+    html += `<div class="nav-section">
+      <div class="nav-section-title">SYSTEM</div>
+      ${navItem('einstellungen','⚙️','Einstellungen')}
+      ${navItem('anleitung','📖','Anleitung')}
+    </div>`;
+  } else {
+    html += `<div class="nav-section">
+      <div class="nav-section-title">SONSTIGES</div>
+      ${navItem('chat','💬','Chat')}
+      ${navItem('anleitung','📖','Anleitung')}
+    </div>`;
+  }
+
+  document.getElementById('sidebar-nav').innerHTML = html;
 }
 
 function updateTopbarLang() {
@@ -908,7 +1004,21 @@ function initData() {
 let currentPage = 'dashboard';
 let topbarActions = {};
 
+// Seiten die nur Chef sehen darf
+const CHEF_PAGES = ['rechnungen','angebote','kva','buchhaltung','finanzen','team','einstellungen','kunden'];
+
+function hasPageAccess(page) {
+  const role = currentUser ? currentUser.rolle : null;
+  const isChef = !role || role === 'Chef' || role === 'Admin';
+  if (CHEF_PAGES.includes(page) && !isChef) return false;
+  return true;
+}
+
 function showPage(page) {
+  if (!hasPageAccess(page)) {
+    notify('⛔ Kein Zugriff – nur für Chef', 'error');
+    return;
+  }
   currentPage = page;
   if(window.innerWidth <= 768) closeSidebar();
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -1008,6 +1118,108 @@ function buildDonut(segments, cx, cy, r, strokeW) {
     </circle>`;
     cum += len; return el;
   }).join('');
+}
+
+// ===== BAR CHART =====
+let _chartMonths = Array.from({length:12},(_,i)=>i); // alle Monate aktiv
+
+function toggleChartMonth(m) {
+  if (_chartMonths.includes(m)) {
+    if (_chartMonths.length > 1) _chartMonths = _chartMonths.filter(x=>x!==m);
+  } else {
+    _chartMonths.push(m); _chartMonths.sort((a,b)=>a-b);
+  }
+  _chartMonths.forEach((_,i)=>{
+    const btn = document.getElementById('cm-'+i); // won't exist after rebuild
+  });
+  refreshBarChart();
+}
+
+function selectAllChartMonths() {
+  _chartMonths = Array.from({length:12},(_,i)=>i);
+  refreshBarChart();
+}
+
+function refreshBarChart() {
+  const wrap = document.getElementById('bar-chart-wrap');
+  if (wrap) wrap.innerHTML = buildBarChart();
+  // Monatsbuttons neu färben
+  const yr = parseInt((document.getElementById('chart-year')||{}).value || new Date().getFullYear());
+  for (let i=0;i<12;i++) {
+    const btn = document.getElementById('cm-'+i);
+    if (btn) {
+      btn.className = 'btn btn-sm ' + (_chartMonths.includes(i)?'btn-primary':'btn-secondary');
+      btn.style.fontSize = '11px'; btn.style.padding = '3px 7px';
+    }
+  }
+}
+
+function buildBarChart() {
+  const berichte  = DB.get('tagesberichte');
+  const auftraege = DB.get('auftraege');
+  const yr = parseInt((document.getElementById('chart-year')||{}).value || new Date().getFullYear());
+  const monate = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const aktiv = _chartMonths;
+
+  const data = monate.map((mon,mi) => {
+    if (!aktiv.includes(mi)) return null;
+    const bMon = berichte.filter(b => {
+      if (!b.datum) return false;
+      const d = new Date(b.datum);
+      return d.getFullYear()===yr && d.getMonth()===mi;
+    });
+    const ausgaben = bMon.reduce((s,b)=>s+
+      (b.materialien||[]).reduce((m,x)=>m+(parseFloat(x.menge||0)*parseFloat(x.preis||0)),0)+
+      (b.zeiten||[]).reduce((z,x)=>z+(parseFloat(x.stunden||0)*parseFloat(x.stundenlohn||0)),0)+
+      (b.fahrten||[]).reduce((f,x)=>f+parseFloat(x.kosten||0),0)+
+      (b.pflegekosten||[]).reduce((p,x)=>p+parseFloat(x.betrag||0),0)
+    ,0);
+    const budget = auftraege.filter(a=>{
+      if (!a.datum) return false;
+      const d = new Date(a.datum);
+      return d.getFullYear()===yr && d.getMonth()===mi;
+    }).reduce((s,a)=>s+parseFloat(a.budget||0),0);
+    const diff = budget - ausgaben;
+    return {mon, mi, ausgaben, budget, gewinn: diff>0?diff:0, verlust: diff<0?Math.abs(diff):0};
+  }).filter(d=>d!==null);
+
+  if (data.length===0) return '<div style="text-align:center;padding:30px;color:var(--muted)">Keine Daten für diesen Zeitraum</div>';
+
+  const maxVal = Math.max(...data.map(d=>Math.max(d.ausgaben, d.budget, 0.1)), 1);
+  const H = 160; const barW = 28; const gap = 14;
+  const totalW = Math.max(data.length*(barW*3+gap)+gap, 300);
+
+  let bars = '';
+  data.forEach((d,i) => {
+    const x = gap + i*(barW*3+gap);
+    const aH = Math.round((d.ausgaben/maxVal)*H);
+    const gH = Math.round((d.gewinn/maxVal)*H);
+    const vH = Math.round((d.verlust/maxVal)*H);
+    bars += `
+      <rect x="${x}" y="${H-aH}" width="${barW}" height="${Math.max(aH,2)}" fill="#f59e0b" rx="3" title="Ausgaben: €${d.ausgaben.toFixed(0)}"/>
+      <rect x="${x+barW+2}" y="${H-gH}" width="${barW}" height="${Math.max(gH,2)}" fill="#22c55e" rx="3" title="Gewinn: €${d.gewinn.toFixed(0)}"/>
+      <rect x="${x+barW*2+4}" y="${H-vH}" width="${barW}" height="${Math.max(vH,2)}" fill="#ef4444" rx="3" title="Verlust: €${d.verlust.toFixed(0)}"/>
+      <text x="${x+barW*1.5}" y="${H+14}" text-anchor="middle" font-size="10" fill="var(--text2)" font-family="Arial">${d.mon}</text>`;
+    if (d.ausgaben>0||d.gewinn>0||d.verlust>0) {
+      bars += `<text x="${x+barW/2}" y="${H-aH-3}" text-anchor="middle" font-size="8" fill="#f59e0b" font-family="Arial">${d.ausgaben>=1000?(d.ausgaben/1000).toFixed(1)+'k':d.ausgaben.toFixed(0)}</text>`;
+    }
+  });
+
+  // Y-Achse Labels
+  let yLabels = '';
+  for (let i=0;i<=4;i++) {
+    const y = H - (H/4)*i;
+    const val = (maxVal/4)*i;
+    yLabels += `<text x="38" y="${y+4}" text-anchor="end" font-size="9" fill="var(--text2)" font-family="Arial">€${val>=1000?(val/1000).toFixed(1)+'k':val.toFixed(0)}</text>
+    <line x1="42" y1="${y}" x2="${totalW+42}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>`;
+  }
+
+  return `<svg viewBox="0 0 ${totalW+50} ${H+30}" style="min-width:${totalW+50}px;height:${H+30}px">
+    <g transform="translate(42,4)">
+      ${yLabels}
+      ${bars}
+    </g>
+  </svg>`;
 }
 
 function dashboard() {
@@ -1114,6 +1326,33 @@ function dashboard() {
     </div>
   </div>
 
+  <!-- SÄULENDIAGRAMM -->
+  <div class="card" style="margin-bottom:18px">
+    <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">
+      <span>📊</span> ${L('Monatsübersicht','Pasqyra Mujore')}
+    </div>
+    <div id="bar-chart-wrap" style="width:100%;overflow-x:auto">
+      ${buildBarChart()}
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--muted);font-weight:600">${L('Zeitraum:','Periudha:')}</span>
+        <select id="chart-year" onchange="refreshBarChart()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-size:13px">
+          ${(()=>{const y=new Date().getFullYear();let o='';for(let i=y-2;i<=y;i++)o+=`<option value="${i}" ${i===y?'selected':''}>${i}</option>`;return o;})()}
+        </select>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'].map((m,i)=>`<button id="cm-${i}" class="btn btn-sm ${new Date().getMonth()===i?'btn-primary':'btn-secondary'}" onclick="toggleChartMonth(${i})" style="font-size:11px;padding:3px 7px">${m}</button>`).join('')}
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="selectAllChartMonths()" style="font-size:11px">Alle</button>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;border-radius:3px;background:#f59e0b"></div><span style="font-size:12px;color:var(--muted)">Ausgaben</span></div>
+        <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;border-radius:3px;background:#22c55e"></div><span style="font-size:12px;color:var(--muted)">Gewinn</span></div>
+        <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;border-radius:3px;background:#ef4444"></div><span style="font-size:12px;color:var(--muted)">Verlust</span></div>
+      </div>
+    </div>
+  </div>
+
   <!-- FINANZÜBERSICHT -->
   <div class="card" style="margin-bottom:18px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
@@ -1164,19 +1403,19 @@ function dashboard() {
 
       <!-- MINI STATS -->
       <div style="display:flex;flex-direction:column;gap:10px;min-width:145px">
-        <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:14px;text-align:center">
+        <div onclick="showPage('auftraege')" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform=''">
           <div style="font-size:22px;margin-bottom:2px">📋</div>
-          <div style="font-size:11px;font-weight:700;color:var(--info);margin-bottom:4px">${L('Aufträge','Detyra')}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--info);margin-bottom:4px">${L('Aufträge','Detyra')} →</div>
           <div style="font-size:26px;font-weight:900;color:var(--info)">${filtAuftraege.length}</div>
         </div>
-        <div style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:14px;text-align:center">
+        <div onclick="showPage('journal')" style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform=''">
           <div style="font-size:22px;margin-bottom:2px">📔</div>
-          <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:4px">${L('Tagesberichte','Raporte')}</div>
+          <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:4px">${L('Tagesberichte','Raporte')} →</div>
           <div style="font-size:26px;font-weight:900;color:#6366f1">${filtBerichte.length}</div>
         </div>
-        <div style="background:${gewinn>=0&&hatBudget?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)'};border:1px solid ${gewinn>=0&&hatBudget?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)'};border-radius:10px;padding:14px;text-align:center">
+        <div onclick="showPage('buchhaltung')" style="background:${gewinn>=0&&hatBudget?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)'};border:1px solid ${gewinn>=0&&hatBudget?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)'};border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform=''">
           <div style="font-size:22px;margin-bottom:2px">${gewinn>=0&&hatBudget?'📈':'📉'}</div>
-          <div style="font-size:11px;font-weight:700;color:${gwColor};margin-bottom:4px">${L('Marge','Marzhi')}</div>
+          <div style="font-size:11px;font-weight:700;color:${gwColor};margin-bottom:4px">${L('Marge','Marzhi')} →</div>
           <div style="font-size:22px;font-weight:900;color:${gwColor}">${hatBudget&&gesamtBudget>0?(((gewinn/gesamtBudget)*100).toFixed(1)+'%'):'—'}</div>
         </div>
       </div>
@@ -1943,6 +2182,7 @@ function auftraegePage() {
           </td>
           <td style="white-space:nowrap">
             <button class="btn btn-sm" style="background:rgba(59,130,246,.2);color:var(--info)" onclick="showAuftragJournal(${a.id})">📋 Journal</button>
+            ${a.status==='Abgeschlossen'?`<button class="btn btn-sm" style="background:rgba(16,185,129,.2);color:#10b981" onclick="printAbnahme(${a.id})" title="Abnahmeformular drucken">📄 Abnahme</button>`:''}
             <button class="btn btn-sm btn-secondary" onclick="editAuftrag(${a.id})">✏</button>
             <button class="btn btn-sm btn-danger" onclick="deleteAuftrag(${a.id})">✕</button>
           </td>
@@ -2445,6 +2685,68 @@ function saveAuftrag(id) {
 }
 function editAuftrag(id){openAuftragModal(id);}
 function deleteAuftrag(id){confirmDelete(currentLang==='sq'?'Detyra do të fshihet!':'Auftrag wirklich löschen?',function(){DB.set('auftraege',DB.get('auftraege').filter(function(a){return a.id!==id;}));showPage('auftraege');});}
+
+function printAbnahme(id) {
+  var a = DB.get('auftraege').find(function(x){return x.id===id;});
+  if (!a) return;
+  var kunde = DB.get('kunden').find(function(k){return k.id===a.kundeId||k.name===a.kunde;})||{name:a.kunde||'—',adresse:'',telefon:''};
+  var berichte = DB.get('tagesberichte').filter(function(b){return b.auftragsId===id;});
+  var arbStd = berichte.reduce(function(s,b){return s+(b.zeiten||[]).reduce(function(z,x){return z+parseFloat(x.stunden||0);},0);},0);
+  var matList = [];
+  berichte.forEach(function(b){(b.materialien||[]).forEach(function(m){matList.push(m);});});
+
+  var matRows = matList.length>0 ? matList.map(function(m){
+    return '<tr><td>'+escXml(m.bezeichnung||m.name||'')+'</td><td style="text-align:center">'+m.menge+'</td><td style="text-align:center">'+escXml(m.einheit||'Stk')+'</td></tr>';
+  }).join('') : '<tr><td colspan="3" style="color:#999;text-align:center">Keine Materialien erfasst</td></tr>';
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Abnahmeformular '+escXml(a.auftragsnr||a.id)+'</title><style>'+
+    '*{margin:0;padding:0;box-sizing:border-box}'+
+    'body{font-family:Arial,sans-serif;font-size:11pt;color:#111;background:#fff;padding:15mm 20mm}'+
+    '.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8mm;padding-bottom:4mm;border-bottom:2px solid #f59e0b}'+
+    '.logo{font-size:26pt;font-weight:900;color:#f59e0b}'+
+    '.doc-title{text-align:right}'+
+    '.doc-title h1{font-size:16pt;font-weight:900;color:#0f172a}'+
+    '.doc-title p{font-size:9pt;color:#666}'+
+    '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8mm;margin-bottom:6mm}'+
+    '.box{border:1px solid #ddd;border-radius:4px;padding:4mm}'+
+    '.box h3{font-size:9pt;font-weight:700;color:#f59e0b;text-transform:uppercase;margin-bottom:3mm;border-bottom:1px solid #eee;padding-bottom:2mm}'+
+    '.box p{font-size:10pt;margin-bottom:1mm}'+
+    'table{width:100%;border-collapse:collapse;margin-bottom:6mm}'+
+    'th{background:#f59e0b;color:#fff;padding:2mm 3mm;font-size:9pt;text-align:left}'+
+    'td{border-bottom:1px solid #eee;padding:2mm 3mm;font-size:10pt}'+
+    '.sig-section{margin-top:12mm;display:grid;grid-template-columns:1fr 1fr;gap:20mm}'+
+    '.sig-box{text-align:center}'+
+    '.sig-line{border-top:1px solid #333;margin-top:20mm;padding-top:2mm;font-size:9pt;color:#666}'+
+    '.footer{margin-top:10mm;padding-top:3mm;border-top:1px solid #ddd;font-size:8pt;color:#999;text-align:center}'+
+    '@media print{body{padding:10mm 15mm}}'+
+  '</style></head><body>'+
+    '<div class="header">'+
+      '<div class="logo">⚡ Elektrika</div>'+
+      '<div class="doc-title"><h1>ABNAHMEPROTOKOLL</h1><p>Auftrags-Nr.: <strong>'+escXml(a.auftragsnr||String(a.id))+'</strong></p><p>Datum: <strong>'+new Date().toLocaleDateString('de-DE')+'</strong></p></div>'+
+    '</div>'+
+    '<div class="grid2">'+
+      '<div class="box"><h3>Auftraggeber / Kunde</h3><p><strong>'+escXml(kunde.name)+'</strong></p><p>'+escXml(kunde.adresse||'')+'</p><p>Tel: '+escXml(kunde.telefon||'—')+'</p></div>'+
+      '<div class="box"><h3>Auftrag</h3><p><strong>'+escXml(a.titel||'')+'</strong></p><p>Projekt: '+escXml(a.projekt||'—')+'</p><p>Monteur: '+escXml(a.monteur||'—')+'</p><p>Beginn: '+escXml(a.datum||'—')+'</p></div>'+
+    '</div>'+
+    '<div class="box" style="margin-bottom:6mm"><h3>Beschreibung der ausgeführten Arbeiten</h3><p style="min-height:15mm;white-space:pre-wrap">'+escXml(a.beschreibung||a.adresse||'Gemäß Auftragsumfang ausgeführt.')+'</p></div>'+
+    '<table><thead><tr><th>Material / Artikel</th><th style="text-align:center">Menge</th><th style="text-align:center">Einheit</th></tr></thead><tbody>'+matRows+'</tbody></table>'+
+    '<table><thead><tr><th>Leistung</th><th>Wert</th></tr></thead><tbody>'+
+      '<tr><td>Arbeitsstunden gesamt</td><td><strong>'+arbStd.toFixed(1)+' Std.</strong></td></tr>'+
+      '<tr><td>Anzahl Tagesberichte</td><td><strong>'+berichte.length+'</strong></td></tr>'+
+      '<tr><td>Auftragsstatus</td><td><strong style="color:green">'+escXml(a.status)+'</strong></td></tr>'+
+    '</tbody></table>'+
+    '<div class="sig-section">'+
+      '<div class="sig-box"><div class="sig-line">Datum, Unterschrift Kunde<br><em>'+escXml(kunde.name)+'</em></div></div>'+
+      '<div class="sig-box"><div class="sig-line">Datum, Unterschrift Auftragnehmer<br><em>Elektrika – Firmenstempel</em></div></div>'+
+    '</div>'+
+    '<div class="footer">Dieses Dokument bestätigt die ordnungsgemäße Durchführung und Abnahme der beschriebenen Arbeiten. · Elektrika Elektriker App</div>'+
+  '</body></html>';
+
+  var win = window.open('','_blank','width=794,height=1123');
+  win.document.write(html);
+  win.document.close();
+  win.onload = function(){ win.print(); };
+}
 
 // ===== KALENDER =====
 let _kalMonat = new Date().getMonth();
