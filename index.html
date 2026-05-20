@@ -798,11 +798,20 @@ function mapLink(adresse) {
   </span>`;
 }
 
-let _openFolders = JSON.parse(localStorage.getItem('elektrika_folders')||'["k3","k4","k5","k7"]');
+let _openFolders = (function(){
+  try {
+    var v = JSON.parse(localStorage.getItem('elektrika_folders'));
+    if (Array.isArray(v) && v.length > 0) return v;
+  } catch(e){}
+  return ['k3','k4','k5','k7']; // alle standardmäßig offen
+})();
 
 function toggleFolder(id) {
-  if (_openFolders.includes(id)) _openFolders = _openFolders.filter(f=>f!==id);
-  else _openFolders.push(id);
+  if (_openFolders.includes(id)) {
+    _openFolders = _openFolders.filter(function(f){return f!==id;});
+  } else {
+    _openFolders.push(id);
+  }
   localStorage.setItem('elektrika_folders', JSON.stringify(_openFolders));
   renderSidebar();
 }
@@ -820,15 +829,15 @@ function renderSidebar() {
 
   function folder(id, icon, label, items) {
     const open = _openFolders.includes(id);
-    const hasActive = items.some(i=>i.page===currentPage);
-    return `<div>
-      <div onclick="toggleFolder('${id}')" style="display:flex;align-items:center;gap:8px;padding:9px 16px;cursor:pointer;color:var(--text);font-size:13px;font-weight:700;border-left:3px solid ${hasActive?'var(--primary)':'transparent'};background:${hasActive?'var(--bg3)':'transparent'}">
-        <span>${open?'📂':'📁'}</span>
-        <span style="flex:1">${icon} ${label}</span>
-        <span style="font-size:10px;color:var(--muted)">${open?'▲':'▼'}</span>
-      </div>
-      ${open ? items.map(i=>navItem(i.page,i.icon,i.label)).join('') : ''}
-    </div>`;
+    const hasActive = items.some(function(i){return i.page===currentPage;});
+    return '<div style="margin-bottom:2px">' +
+      '<button onclick="toggleFolder(\'' + id + '\')" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;background:' + (hasActive?'var(--bg3)':'rgba(255,255,255,0.04)') + ';border:none;border-left:3px solid ' + (hasActive?'var(--primary)':'var(--border)') + ';color:var(--text);font-size:13px;font-weight:700;text-align:left">' +
+        '<span style="font-size:15px">' + (open?'📂':'📁') + '</span>' +
+        '<span style="flex:1">' + icon + ' ' + label + '</span>' +
+        '<span style="font-size:12px;color:var(--primary);font-weight:900">' + (open?'▾':'▸') + '</span>' +
+      '</button>' +
+      (open ? '<div style="background:rgba(0,0,0,0.15);border-left:3px solid var(--primary);margin-left:8px">' + items.map(function(i){return navItem(i.page,i.icon,i.label);}).join('') + '</div>' : '') +
+    '</div>';
   }
 
   let html = '';
