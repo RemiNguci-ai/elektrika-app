@@ -1,21 +1,16 @@
-const CACHE = 'elektrika-v5';
-const FILES = [
-  '/elektrika-app.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
-];
+const CACHE = 'elektrika-v6';
 
-// Installation: alle Dateien cachen
+// Installation: nur Manifest und Icons cachen, HTML immer vom Netzwerk
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(FILES))
+      .then(c => c.addAll(['/elektrika-app/manifest.json', '/elektrika-app/icon-192.png', '/elektrika-app/icon-512.png']))
+      .catch(() => {})
       .then(() => self.skipWaiting())
   );
 });
 
-// Alte Caches loeschen
+// Alle alten Caches loeschen
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
@@ -24,36 +19,30 @@ self.addEventListener('activate', e => {
   );
 });
 
-// HTML-Seiten: immer zuerst Netzwerk (damit Updates sofort kommen)
-// Andere Dateien: Cache zuerst
+// IMMER vom Netzwerk laden (kein HTML-Cache)
 self.addEventListener('fetch', e => {
   if (!e.request.url.startsWith(self.location.origin)) return;
+  if (e.request.method !== 'GET') return;
 
-  if (e.request.mode === 'navigate') {
+  // HTML: immer Netzwerk zuerst
+  if (e.request.mode === 'navigate' || e.request.url.endsWith('.html') || e.request.url.endsWith('/')) {
     e.respondWith(
-      fetch(e.request).then(resp => {
-        if (resp && resp.status === 200) {
-          caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
-        }
-        return resp;
-      }).catch(() =>
-        caches.match(e.request).then(cached =>
-          cached || new Response('<h1>Offline – bitte Internet prüfen</h1>', {headers:{'Content-Type':'text/html'}})
-        )
+      fetch(e.request, {cache: 'no-store'}).catch(() =>
+        caches.match(e.request).then(c => c || new Response('<h1>Offline</h1>', {headers:{'Content-Type':'text/html'}}))
       )
     );
     return;
   }
 
+  // Icons/Assets: Cache zuerst
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(resp => {
-        if (resp && resp.status === 200) {
+        if (resp && resp.status === 200)
           caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
-        }
         return resp;
-      }).catch(() => caches.match('/'));
+      });
     })
   );
 });
