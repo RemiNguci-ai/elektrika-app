@@ -829,22 +829,16 @@ function renderSidebar() {
 
   let html = `
   <div class="nav-section">
-    <div class="nav-section-title">START</div>
     ${item('dashboard','🏠','Dashboard')}
-  </div>
-  <div class="nav-section">
-    <div class="nav-section-title">SCHNELLZUGRIFF</div>
     ${item('auftraege','📝','Aufträge')}
     ${item('journal','📔','Tagesberichte')}
     ${item('lager','📦','Lager')}
-    ${isChef ? item('rechnungen','💶','Rechnungen') : ''}
-  </div>
-  <div class="nav-section">
-    <div class="nav-section-title">ABLAGE</div>
-    ${item('ablage','📁','Alle Bereiche')}
-  </div>
-  <div class="nav-section">
-    <div class="nav-section-title">WERKZEUGE</div>
+    ${item('bestellungen','🛒','Bestellungen')}
+    ${item('projekte','📁','Projekte')}
+    ${item('kunden','👥','Kunden')}
+    ${item('kalender','📅','Kalender')}
+    ${item('pruefung','🔍','Prüfungen')}
+    ${item('messgeraete','🔧','Messgeräte')}
     ${item('rechner','🔢','Rechner')}
     ${item('normen','📋','Normen')}
     ${item('chat','💬','Chat')}
@@ -853,7 +847,11 @@ function renderSidebar() {
   if (isChef) {
     html += `
   <div class="nav-section">
-    <div class="nav-section-title">SYSTEM</div>
+    ${item('kva','📋','KVA')}
+    ${item('angebote','📄','Angebote')}
+    ${item('rechnungen','💶','Rechnungen')}
+    ${item('finanzen','📊','Finanzen')}
+    ${item('buchhaltung','📊','Buchhaltung')}
     ${item('team','👷','Team')}
     ${item('einstellungen','⚙️','Einstellungen')}
     ${item('anleitung','📖','Anleitung')}
