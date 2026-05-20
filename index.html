@@ -879,86 +879,152 @@ function renderSidebar() {
 // ===== SPEICHER PLATZ =====
 let spOpenFolder = null;
 
+const SP_FOLDERS = [
+  {id:'sp_lager',      icon:'📦', label:'Lager & Material',       color:'#f59e0b', bg:'rgba(245,158,11,0.12)'},
+  {id:'sp_projekte',   icon:'📁', label:'Projektmanagement',       color:'#3b82f6', bg:'rgba(59,130,246,0.12)'},
+  {id:'sp_pruefung',   icon:'🔍', label:'Prüfung & Messung',       color:'#10b981', bg:'rgba(16,185,129,0.12)'},
+  {id:'sp_team',       icon:'👷', label:'Team & Kommunikation',    color:'#8b5cf6', bg:'rgba(139,92,246,0.12)', chefOnly:true},
+  {id:'sp_buchhaltung',icon:'💶', label:'Buchhaltung',             color:'#ef4444', bg:'rgba(239,68,68,0.12)',  chefOnly:true},
+];
+
+function getSpeicherData() {
+  try { return JSON.parse(localStorage.getItem('elektrika_speicher')) || {}; } catch { return {}; }
+}
+function saveSpeicherData(d) { localStorage.setItem('elektrika_speicher', JSON.stringify(d)); }
+
 function speicherPlatzPage() {
   const role = currentUser ? currentUser.rolle : null;
   const isChef = !role || role === 'Chef' || role === 'Admin';
-  const chefPages = new Set(['rechnungen','angebote','kva','buchhaltung','finanzen','team','einstellungen','kunden']);
+  const folders = SP_FOLDERS.filter(f => isChef || !f.chefOnly);
+  const data = getSpeicherData();
 
-  const folders = [
-    {id:'lager_mat', icon:'📦', label:'Lager & Material', color:'#f59e0b', bg:'rgba(245,158,11,0.12)', items:[
-      {page:'lager', icon:'📦', label:'Lager'},
-      {page:'bestellungen', icon:'🛒', label:'Bestellungen'},
-    ]},
-    {id:'projekte_mgmt', icon:'📁', label:'Projektmanagement', color:'#3b82f6', bg:'rgba(59,130,246,0.12)', items:[
-      {page:'projekte', icon:'📁', label:'Projekte'},
-      {page:'auftraege', icon:'📝', label:'Aufträge'},
-      {page:'journal', icon:'📋', label:'Journal'},
-      {page:'kalender', icon:'📅', label:'Kalender'},
-      {page:'kunden', icon:'👥', label:'Kunden'},
-    ]},
-    {id:'pruef_mes', icon:'🔍', label:'Prüfung & Messung', color:'#10b981', bg:'rgba(16,185,129,0.12)', items:[
-      {page:'pruefung', icon:'🔍', label:'Prüfprotokolle'},
-      {page:'messgeraete', icon:'🔧', label:'Messgeräte'},
-    ]},
-    {id:'team_komm', icon:'👷', label:'Team & Kommunikation', color:'#8b5cf6', bg:'rgba(139,92,246,0.12)', chefOnly:true, items:[
-      {page:'team', icon:'👷', label:'Team'},
-      {page:'chat', icon:'💬', label:'Chat'},
-    ]},
-    {id:'buchhalt', icon:'💶', label:'Buchhaltung', color:'#ef4444', bg:'rgba(239,68,68,0.12)', chefOnly:true, items:[
-      {page:'kva', icon:'📋', label:'Kostenvoranschlag'},
-      {page:'angebote', icon:'📄', label:'Angebote'},
-      {page:'rechnungen', icon:'💶', label:'Rechnungen'},
-      {page:'finanzen', icon:'📊', label:'Finanzen'},
-      {page:'buchhaltung', icon:'📊', label:'Buchhaltung Excel'},
-    ]},
-  ].filter(f => isChef || !f.chefOnly);
-
-  const openF = spOpenFolder;
-
-  if (openF) {
-    const folder = folders.find(f => f.id === openF);
+  if (spOpenFolder) {
+    const folder = folders.find(f => f.id === spOpenFolder);
     if (!folder) { spOpenFolder = null; return speicherPlatzPage(); }
-    const visItems = folder.items.filter(i => isChef || !chefPages.has(i.page));
+    const files = data[spOpenFolder] || [];
     return `
-    <div style="margin-bottom:20px">
-      <button class="btn btn-secondary" onclick="spOpenFolder=null;showPage('speicherplatz')" style="font-size:13px">
-        ← Zurück
-      </button>
-      <span style="margin-left:12px;font-size:18px;font-weight:700">${folder.icon} ${folder.label}</span>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="spOpenFolder=null;showPage('speicherplatz')">← Zurück</button>
+      <span style="font-size:18px;font-weight:700">${folder.icon} ${folder.label}</span>
+      <button class="btn btn-primary" onclick="spUploadFile('${folder.id}')" style="margin-left:auto">📎 Datei hochladen</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px">
-      ${visItems.map(item=>`
-        <div onclick="showPage('${item.page}')" style="background:var(--bg2);border:2px solid var(--border);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:10px"
-          onmouseover="this.style.borderColor='${folder.color}';this.style.background='${folder.bg}'"
-          onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg2)'">
-          <span style="font-size:36px">${item.icon}</span>
-          <span style="font-size:13px;font-weight:600;color:var(--text)">${item.label}</span>
-        </div>`).join('')}
-    </div>`;
+    ${files.length === 0 ? `
+      <div style="text-align:center;padding:60px 20px;color:var(--text2)">
+        <div style="font-size:64px;margin-bottom:16px">📂</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px">Ordner ist leer</div>
+        <div style="font-size:13px">Klicke auf <strong>📎 Datei hochladen</strong> um Dateien hinzuzufügen</div>
+      </div>` : `
+      <div class="card" style="overflow-x:auto">
+        <table style="min-width:480px">
+          <thead><tr><th>Name</th><th>Typ</th><th>Größe</th><th>Datum</th><th style="text-align:center">Aktionen</th></tr></thead>
+          <tbody>
+            ${files.map(f=>`<tr>
+              <td style="font-weight:600">📄 ${f.name}</td>
+              <td><span style="background:var(--bg3);padding:2px 8px;border-radius:10px;font-size:11px">${(f.typ||'dat').toUpperCase()}</span></td>
+              <td style="color:var(--text2);font-size:12px">${f.groesse}</td>
+              <td style="color:var(--text2);font-size:12px">${f.datum}</td>
+              <td style="text-align:center;white-space:nowrap">
+                <button class="btn btn-sm btn-secondary" onclick="spDownloadFile('${spOpenFolder}',${f.id})" title="Herunterladen">⬇️ Laden</button>
+                <button class="btn btn-sm btn-danger" onclick="spDeleteFile('${spOpenFolder}',${f.id})" title="Löschen">🗑️</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`}`;
   }
 
   return `
-  <div style="margin-bottom:20px">
+  <div style="margin-bottom:24px">
     <h2 style="font-size:20px;font-weight:700">🗂️ Speicher Platz</h2>
-    <p style="color:var(--text2);font-size:13px;margin-top:4px">Ordner öffnen und zur gewünschten Seite navigieren</p>
+    <p style="color:var(--text2);font-size:13px;margin-top:4px">Ordner öffnen — Dateien hochladen, benennen und verwalten</p>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px">
-    ${folders.map(f=>`
-      <div onclick="spOpenFolder='${f.id}';showPage('speicherplatz')"
-        style="background:var(--bg2);border:2px solid var(--border);border-radius:14px;padding:28px 20px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center"
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:20px">
+    ${folders.map(f=>{
+      const count = (data[f.id]||[]).length;
+      return `<div onclick="spOpenFolder='${f.id}';showPage('speicherplatz')"
+        style="background:var(--bg2);border:2px solid var(--border);border-radius:14px;padding:28px 16px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center"
         onmouseover="this.style.borderColor='${f.color}';this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
-        <div style="position:relative">
-          <span style="font-size:56px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2))">📂</span>
-          <span style="position:absolute;bottom:0;right:-6px;font-size:22px">${f.icon}</span>
-        </div>
+        <span style="font-size:56px">${count>0?'📂':'📁'}</span>
         <div>
           <div style="font-size:14px;font-weight:700;color:var(--text)">${f.label}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:3px">${f.items.length} Seiten</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:3px">${count>0?(count+' Datei'+(count!==1?'en':'')):'Leer'}</div>
         </div>
-        <div style="background:${f.bg};color:${f.color};border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600">Öffnen →</div>
-      </div>`).join('')}
+        <div style="background:${count>0?f.bg:'var(--bg3)'};color:${count>0?f.color:'var(--text2)'};border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600">
+          ${count>0?count+' Datei'+(count!==1?'en →':'→'):'Leer – Öffnen'}
+        </div>
+      </div>`;
+    }).join('')}
   </div>`;
+}
+
+function spUploadFile(folderId) {
+  openModal('📎 Datei hochladen', `
+    <div class="form-group">
+      <label>Dateiname (frei wählbar)</label>
+      <input id="sp-fname" placeholder="z.B. Lieferschein April 2026" style="font-size:14px;font-weight:600">
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label>Datei auswählen</label>
+      <input type="file" id="sp-ffile" style="font-size:13px;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:100%;cursor:pointer">
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:10px;font-size:12px;color:var(--text2);margin-top:10px">
+      💡 PDF, Bilder, Word, Excel, Text und weitere Formate werden unterstützt.
+    </div>
+  `, [
+    {label:'Abbrechen', action:'closeModal()'},
+    {label:'💾 Speichern', primary:true, action:`spSaveFile('${folderId}')`}
+  ]);
+}
+
+function spSaveFile(folderId) {
+  const name = document.getElementById('sp-fname')?.value?.trim();
+  const fileEl = document.getElementById('sp-ffile');
+  const file = fileEl?.files?.[0];
+  if (!name) { notify('Bitte einen Dateinamen eingeben', 'error'); return; }
+  if (!file) { notify('Bitte eine Datei auswählen', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = getSpeicherData();
+    if (!data[folderId]) data[folderId] = [];
+    const ext = (file.name.split('.').pop()||'dat').toLowerCase();
+    const kb = Math.round(file.size/1024);
+    data[folderId].push({
+      id: Date.now(),
+      name: name,
+      typ: ext,
+      groesse: kb>=1024?(kb/1024).toFixed(1)+' MB':kb+' KB',
+      datum: new Date().toLocaleDateString('de-DE'),
+      originalName: file.name,
+      data: e.target.result
+    });
+    saveSpeicherData(data);
+    closeModal();
+    notify('✅ Datei gespeichert: '+name, 'success');
+    showPage('speicherplatz');
+  };
+  reader.readAsDataURL(file);
+}
+
+function spDownloadFile(folderId, fileId) {
+  const data = getSpeicherData();
+  const f = (data[folderId]||[]).find(x=>x.id===fileId);
+  if (!f) return;
+  const a = document.createElement('a');
+  a.href = f.data;
+  a.download = f.name + (f.originalName?.includes('.')?'.'+f.originalName.split('.').pop():'');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function spDeleteFile(folderId, fileId) {
+  if (!confirm('Datei wirklich löschen?')) return;
+  const data = getSpeicherData();
+  data[folderId] = (data[folderId]||[]).filter(x=>x.id!==fileId);
+  saveSpeicherData(data);
+  notify('Datei gelöscht', 'success');
+  showPage('speicherplatz');
 }
 
 function updateTopbarLang() {
