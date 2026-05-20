@@ -46,11 +46,14 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 #sidebar-header p { font-size: 11px; color: var(--text2); margin-top: 2px; }
 .nav-section { padding: 8px 0; border-bottom: 1px solid var(--border); }
 .nav-section-title { font-size: var(--sb-title-size); font-weight: 800; color: var(--sb-title-color); text-transform: uppercase; letter-spacing: var(--sb-title-letter); padding: 10px 16px 4px; border-left: 3px solid var(--sb-title-color); margin-left: 8px; }
-.nav-folder { border-bottom: 1px solid var(--border); }
-.nav-folder-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 10px 13px; font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; border-left:3px solid var(--primary); margin-left:8px; margin-top:4px; margin-bottom:2px; border-radius:0 6px 6px 0; user-select:none; -webkit-user-select:none; }
-.nav-folder-header:hover { background:var(--bg3); }
-.nav-folder-arrow { font-size:10px; display:inline-block; transition:transform 0.2s; }
-.nav-folder-items .nav-item { padding-left:30px; }
+.nav-folder { margin:4px 8px; border-radius:8px; overflow:hidden; }
+.nav-folder-header { display:flex; align-items:center; gap:8px; padding:9px 12px; font-size:12px; font-weight:700; color:#1a1a1a; background:linear-gradient(135deg,#f5c842,#e6a800); border-radius:8px; cursor:pointer; user-select:none; -webkit-user-select:none; box-shadow:0 2px 6px rgba(0,0,0,0.18); margin-bottom:2px; }
+.nav-folder-header:hover { background:linear-gradient(135deg,#ffd84d,#f0b300); }
+.nav-folder-icon { font-size:20px; line-height:1; }
+.nav-folder-label { flex:1; font-size:11px; letter-spacing:0.3px; }
+.nav-folder-arrow { font-size:10px; display:inline-block; transition:transform 0.2s; color:#7a5a00; }
+.nav-folder-items { background:var(--bg2); border-radius:0 0 8px 8px; margin-top:-4px; padding-top:4px; }
+.nav-folder-items .nav-item { padding-left:32px; }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; cursor: pointer; border-radius: 0; transition: all .15s; color: var(--sb-item-color); font-size: var(--sb-item-size); font-weight: var(--sb-item-weight, 400); }
 .nav-item:hover { background: var(--bg3); color: var(--text); }
 .nav-item.active { background: var(--sb-active-bg); color: var(--sb-active-color); border-right: 3px solid var(--sb-active-color); }
@@ -844,9 +847,12 @@ function renderSidebar() {
       // Auto-open folder wenn aktive Seite darin ist
       if (visItems.some(i => i.page === currentPage)) openFolders.add(s.id);
       const open = openFolders.has(s.id);
+      const folderIcon = open ? '📂' : '📁';
+      const labelText = s.label.replace(/^📁\s*/,'');
       return `<div class="nav-folder">
         <div class="nav-folder-header" onclick="toggleFolder('${s.id}')">
-          <span>${s.label}</span>
+          <span class="nav-folder-icon">${folderIcon}</span>
+          <span class="nav-folder-label">${labelText}</span>
           <span class="nav-folder-arrow" style="transform:rotate(${open?'0deg':'-90deg'})">▼</span>
         </div>
         <div class="nav-folder-items" style="display:${open?'block':'none'}">
