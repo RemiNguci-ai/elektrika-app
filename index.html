@@ -5575,7 +5575,7 @@ function exportExcel() {
     </div>
   `, [
     {label:'Abbrechen', action:'closeModal()'},
-    {label:'📊 Exportieren', primary:true, action:`closeModal();_doExportExcel(document.getElementById('excel-fname').value)`}
+    {label:'📊 Als CSV exportieren', primary:true, action:`closeModal();_doExportExcel(document.getElementById('excel-fname').value)`}
   ]);
   setTimeout(()=>{ const el=document.getElementById('excel-fname'); if(el){el.focus();el.select();} },100);
 }
@@ -5583,61 +5583,50 @@ function exportExcel() {
 function _doExportExcel(filename) {
   filename = (filename||'Lagerliste').trim();
   const material = DB.get('material');
-  const header = ['Bezeichnung','Art','Bestand','Einheit','Mindestbestand','Preis (€)','Standort','Lieferant'];
-  const headerRow = header.map(h=>`<Cell ss:StyleID="h"><Data ss:Type="String">${escXml(h)}</Data></Cell>`).join('');
-  const dataRows = material.map(m=>`<Row>
-    <Cell><Data ss:Type="String">${escXml(m.bezeichnung)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escXml(m.art)}</Data></Cell>
-    <Cell><Data ss:Type="Number">${m.bestand}</Data></Cell>
-    <Cell><Data ss:Type="String">${escXml(m.einheit)}</Data></Cell>
-    <Cell><Data ss:Type="Number">${m.mindest}</Data></Cell>
-    <Cell><Data ss:Type="Number">${m.preis}</Data></Cell>
-    <Cell><Data ss:Type="String">${escXml(m.standort)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escXml(m.lieferant)}</Data></Cell>
-  </Row>`).join('');
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
-  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
-  xmlns:x="urn:schemas-microsoft-com:office:excel">
-  <Styles><Style ss:ID="h"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#F59E0B" ss:Pattern="Solid"/></Style></Styles>
-  <Worksheet ss:Name="Lagerliste"><Table>
-    <Column ss:Width="200"/><Column ss:Width="100"/><Column ss:Width="80"/>
-    <Column ss:Width="70"/><Column ss:Width="110"/><Column ss:Width="80"/>
-    <Column ss:Width="120"/><Column ss:Width="150"/>
-    <Row>${headerRow}</Row>${dataRows}
-  </Table></Worksheet>
-</Workbook>`;
+  const header = ['Bezeichnung','Art','Bestand','Einheit','Mindestbestand','Preis (EUR)','Standort','Lieferant'];
 
-  // Download
-  const blob = new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename + '.xls';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  // CSV Format — öffnet in Excel ohne Warnung
+  const csvEsc = v => '"' + String(v||'').replace(/"/g,'""') + '"';
+  const rows = [
+    header.map(csvEsc).join(';'),
+    ...material.map(m => [
+      csvEsc(m.bezeichnung), csvEsc(m.art), m.bestand,
+      csvEsc(m.einheit), m.mindest, m.preis,
+      csvEsc(m.standort), csvEsc(m.lieferant)
+    ].join(';'))
+  ];
+  const csv = '﻿' + rows.join('\r\n'); // BOM für Excel UTF-8 (ä,ö,ü korrekt)
 
-  // Im Speicher Platz speichern (sp_lager)
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+
+  // Download mit Speicherort-Dialog
   const reader = new FileReader();
   reader.onload = function(e) {
+    // Im Speicher Platz speichern (sp_lager)
     const data = getSpeicherData();
     if (!data['sp_lager']) data['sp_lager'] = [];
-    const kb = Math.round(new Blob([xml]).size / 1024);
+    const kb = Math.round(blob.size / 1024) || 1;
     data['sp_lager'].unshift({
       id: Date.now(),
       name: filename,
-      typ: 'xls',
+      typ: 'csv',
       groesse: kb + ' KB',
       datum: new Date().toLocaleDateString('de-DE'),
-      originalName: filename + '.xls',
+      originalName: filename + '.csv',
       data: e.target.result
     });
     saveSpeicherData(data);
-    notify('📊 Excel gespeichert: ' + filename + ' (auch im Speicher Platz)', 'success');
   };
   reader.readAsDataURL(blob);
+
+  // Direkt herunterladen
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  notify('📊 Exportiert: ' + filename + '.csv (auch im Speicher Platz)', 'success');
 }
 
 // ===== LOGIN SYSTEM =====
