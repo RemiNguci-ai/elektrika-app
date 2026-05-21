@@ -5513,12 +5513,29 @@ function escXml(s) {
 }
 
 function exportExcel() {
-  const material = DB.get('material');
   const heute = new Date().toLocaleDateString('de-DE').replace(/\./g,'-');
+  const defaultName = 'Lagerliste_' + heute;
+  openModal('📊 Excel exportieren', `
+    <div class="form-group">
+      <label>Dateiname</label>
+      <input id="excel-fname" value="${defaultName}" style="font-size:14px;font-weight:600">
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:10px;font-size:12px;color:var(--text2);margin-top:8px">
+      💡 Die Datei wird heruntergeladen <strong>und</strong> automatisch im<br>
+      🗂️ Speicher Platz → 📦 Lager & Material gespeichert.
+    </div>
+  `, [
+    {label:'Abbrechen', action:'closeModal()'},
+    {label:'📊 Exportieren', primary:true, action:`closeModal();_doExportExcel(document.getElementById('excel-fname').value)`}
+  ]);
+  setTimeout(()=>{ const el=document.getElementById('excel-fname'); if(el){el.focus();el.select();} },100);
+}
 
+function _doExportExcel(filename) {
+  filename = (filename||'Lagerliste').trim();
+  const material = DB.get('material');
   const header = ['Bezeichnung','Art','Bestand','Einheit','Mindestbestand','Preis (€)','Standort','Lieferant'];
   const headerRow = header.map(h=>`<Cell ss:StyleID="h"><Data ss:Type="String">${escXml(h)}</Data></Cell>`).join('');
-
   const dataRows = material.map(m=>`<Row>
     <Cell><Data ss:Type="String">${escXml(m.bezeichnung)}</Data></Cell>
     <Cell><Data ss:Type="String">${escXml(m.art)}</Data></Cell>
@@ -5529,40 +5546,49 @@ function exportExcel() {
     <Cell><Data ss:Type="String">${escXml(m.standort)}</Data></Cell>
     <Cell><Data ss:Type="String">${escXml(m.lieferant)}</Data></Cell>
   </Row>`).join('');
-
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
   xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
   xmlns:x="urn:schemas-microsoft-com:office:excel">
-  <Styles>
-    <Style ss:ID="h">
-      <Font ss:Bold="1" ss:Color="#FFFFFF"/>
-      <Interior ss:Color="#F59E0B" ss:Pattern="Solid"/>
-    </Style>
-  </Styles>
-  <Worksheet ss:Name="Lagerliste">
-    <Table>
-      <Column ss:Width="200"/>
-      <Column ss:Width="100"/>
-      <Column ss:Width="80"/>
-      <Column ss:Width="70"/>
-      <Column ss:Width="110"/>
-      <Column ss:Width="80"/>
-      <Column ss:Width="120"/>
-      <Column ss:Width="150"/>
-      <Row>${headerRow}</Row>
-      ${dataRows}
-    </Table>
-  </Worksheet>
+  <Styles><Style ss:ID="h"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#F59E0B" ss:Pattern="Solid"/></Style></Styles>
+  <Worksheet ss:Name="Lagerliste"><Table>
+    <Column ss:Width="200"/><Column ss:Width="100"/><Column ss:Width="80"/>
+    <Column ss:Width="70"/><Column ss:Width="110"/><Column ss:Width="80"/>
+    <Column ss:Width="120"/><Column ss:Width="150"/>
+    <Row>${headerRow}</Row>${dataRows}
+  </Table></Worksheet>
 </Workbook>`;
 
+  // Download
   const blob = new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'Lagerliste_' + heute + '.xls';
+  a.href = url;
+  a.download = filename + '.xls';
+  document.body.appendChild(a);
   a.click();
-  notify('📊 Excel exportiert', 'success');
+  document.body.removeChild(a);
+
+  // Im Speicher Platz speichern (sp_lager)
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = getSpeicherData();
+    if (!data['sp_lager']) data['sp_lager'] = [];
+    const kb = Math.round(new Blob([xml]).size / 1024);
+    data['sp_lager'].unshift({
+      id: Date.now(),
+      name: filename,
+      typ: 'xls',
+      groesse: kb + ' KB',
+      datum: new Date().toLocaleDateString('de-DE'),
+      originalName: filename + '.xls',
+      data: e.target.result
+    });
+    saveSpeicherData(data);
+    notify('📊 Excel gespeichert: ' + filename + ' (auch im Speicher Platz)', 'success');
+  };
+  reader.readAsDataURL(blob);
 }
 
 // ===== LOGIN SYSTEM =====
