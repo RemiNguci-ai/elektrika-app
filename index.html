@@ -1012,12 +1012,13 @@ function spOpenFile(folderId, fileId) {
   const f = (data[folderId]||[]).find(x=>x.id===fileId);
   if (!f) return;
   const typ = (f.typ||'').toLowerCase();
-  const canShow = ['pdf','jpg','jpeg','png','gif','webp','bmp','svg'].includes(typ);
+  const isImage = ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(typ);
+  const isPdf = typ === 'pdf';
 
-  if (canShow) {
+  if (isImage || isPdf) {
     const win = window.open();
     if (win) {
-      if (['jpg','jpeg','png','gif','webp','bmp','svg'].includes(typ)) {
+      if (isImage) {
         win.document.write(`<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${f.data}" style="max-width:100%;max-height:100vh"></body></html>`);
       } else {
         win.location.href = f.data;
@@ -1025,57 +1026,45 @@ function spOpenFile(folderId, fileId) {
       return;
     }
   }
-  // Datei kann nicht geöffnet werden → Speichern-Dialog
+  // Nicht anzeigbar oder Popup geblockt → Speichern-Dialog
   spSaveWithPicker(f);
 }
 
 async function spSaveWithPicker(f) {
   const typ = (f.typ||'dat').toLowerCase();
   const suggestedName = f.name + '.' + typ;
-  try {
-    if ('showSaveFilePicker' in window) {
+  if ('showSaveFilePicker' in window) {
+    try {
       const handle = await window.showSaveFilePicker({
         suggestedName: suggestedName,
         types: [{ description: typ.toUpperCase() + ' Datei', accept: {'*/*': ['.'+typ]} }]
       });
-      const response = await fetch(f.data);
-      const blob = await response.blob();
+      const resp = await fetch(f.data);
+      const blob = await resp.blob();
       const writable = await handle.createWritable();
       await writable.write(blob);
       await writable.close();
-      notify('✅ Datei gespeichert: ' + suggestedName, 'success');
-    } else {
-      // Fallback: normaler Download
-      const a = document.createElement('a');
-      a.href = f.data;
-      a.download = suggestedName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      notify('⬇️ Datei wird heruntergeladen', 'success');
-    }
-  } catch(e) {
-    if (e.name !== 'AbortError') {
-      const a = document.createElement('a');
-      a.href = f.data;
-      a.download = suggestedName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      notify('✅ Gespeichert: ' + suggestedName, 'success');
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return; // Benutzer hat abgebrochen
     }
   }
+  // Fallback: Browser-Download (Speicherort über Browser-Einstellungen)
+  const a = document.createElement('a');
+  a.href = f.data;
+  a.download = suggestedName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  notify('⬇️ Wird heruntergeladen: ' + suggestedName, 'success');
 }
 
 function spDownloadFile(folderId, fileId) {
   const data = getSpeicherData();
   const f = (data[folderId]||[]).find(x=>x.id===fileId);
   if (!f) return;
-  const a = document.createElement('a');
-  a.href = f.data;
-  a.download = f.name + (f.originalName?.includes('.')?'.'+f.originalName.split('.').pop():'');
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  spSaveWithPicker(f);
 }
 
 function spDeleteFile(folderId, fileId) {
