@@ -924,6 +924,7 @@ function speicherPlatzPage() {
               <td style="color:var(--text2);font-size:12px">${f.groesse}</td>
               <td style="color:var(--text2);font-size:12px">${f.datum}</td>
               <td style="text-align:center;white-space:nowrap">
+                <button class="btn btn-sm btn-secondary" onclick="spOpenFile('${spOpenFolder}',${f.id})" title="Öffnen">👁️ Öffnen</button>
                 <button class="btn btn-sm btn-secondary" onclick="spDownloadFile('${spOpenFolder}',${f.id})" title="Herunterladen">⬇️ Laden</button>
                 <button class="btn btn-sm btn-danger" onclick="spDeleteFile('${spOpenFolder}',${f.id})" title="Löschen">🗑️</button>
               </td>
@@ -1004,6 +1005,26 @@ function spSaveFile(folderId) {
     showPage('speicherplatz');
   };
   reader.readAsDataURL(file);
+}
+
+function spOpenFile(folderId, fileId) {
+  const data = getSpeicherData();
+  const f = (data[folderId]||[]).find(x=>x.id===fileId);
+  if (!f) return;
+  const win = window.open();
+  if (!win) { notify('Popup wurde blockiert – bitte Laden verwenden', 'error'); return; }
+  const typ = (f.typ||'').toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','bmp','svg'].includes(typ)) {
+    win.document.write(`<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${f.data}" style="max-width:100%;max-height:100vh"></body></html>`);
+  } else if (typ === 'pdf') {
+    win.location.href = f.data;
+  } else {
+    win.document.write(`<html><head><title>${f.name}</title></head><body style="font-family:Arial;padding:30px;background:#f9f9f9">
+      <h2>📄 ${f.name}</h2>
+      <p style="color:#555">Dateityp: <strong>${typ.toUpperCase()}</strong> — Diese Datei kann nicht direkt angezeigt werden.</p>
+      <a href="${f.data}" download="${f.name}.${typ}" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#f59e0b;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">⬇️ Herunterladen</a>
+    </body></html>`);
+  }
 }
 
 function spDownloadFile(folderId, fileId) {
