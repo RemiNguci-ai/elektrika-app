@@ -1014,12 +1014,16 @@ function spOpenFile(folderId, fileId) {
   const typ = (f.typ||'').toLowerCase();
   const isImage = ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(typ);
   const isPdf = typ === 'pdf';
+  const isHtml = typ === 'html';
 
-  if (isImage || isPdf) {
+  if (isImage || isPdf || isHtml) {
     const win = window.open();
     if (win) {
       if (isImage) {
         win.document.write(`<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${f.data}" style="max-width:100%;max-height:100vh"></body></html>`);
+      } else if (isHtml) {
+        // HTML-Protokoll direkt rendern
+        fetch(f.data).then(r=>r.text()).then(html=>{ win.document.open(); win.document.write(html); win.document.close(); });
       } else {
         win.location.href = f.data;
       }
@@ -3157,7 +3161,7 @@ function pruefungPage() {
   return `
   <div style="display:flex;gap:12px;margin-bottom:16px">
     <button class="btn btn-primary" onclick="openPruefungModal()">+ Prüfprotokoll</button>
-    <button class="btn btn-secondary" onclick="notify('PDF exportiert','success')">📄 PDF Export</button>
+    <button class="btn btn-secondary" onclick="openMessprotokollOverlay()" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;border:none">📋 Messprotokoll ausfüllen</button>
   </div>
   <div class="card">
     <table>
@@ -3212,6 +3216,221 @@ function savePruefung() {
   DB.set('pruefungen',arr); closeModal(); showPage('pruefung'); notify('Protokoll gespeichert','success');
 }
 function deletePruefung(id){confirmDelete(currentLang==='sq'?'Kontrolli do të fshihet!':'Prüfung wirklich löschen?',function(){DB.set('pruefungen',DB.get('pruefungen').filter(function(p){return p.id!==id;}));showPage('pruefung');});}
+
+// ===== MESSPROTOKOLL FORMULAR =====
+function openMessprotokollOverlay() {
+  if (document.getElementById('mp-overlay')) return;
+  let tableRows = '';
+  for (let i = 0; i < 20; i++) {
+    tableRows += `<tr>
+      <td><input class="mp-ci" id="mp-r${i}-nr" placeholder="${i+1}" style="width:38px;text-align:center"></td>
+      <td><input class="mp-ci" id="mp-r${i}-bez" style="width:175px"></td>
+      <td><input class="mp-ci" id="mp-r${i}-sch" placeholder="B16" style="width:50px;text-align:center"></td>
+      <td><input class="mp-ci" id="mp-r${i}-rcd" placeholder="Q7" style="width:42px;text-align:center"></td>
+      <td><input class="mp-ci" id="mp-r${i}-lei" placeholder="NYM-J 3x2,5" style="width:108px"></td>
+      <td><input class="mp-ci" id="mp-r${i}-len" placeholder="m" style="width:42px;text-align:center"></td>
+      <td><input class="mp-ci" id="mp-r${i}-rl" placeholder="Ω" style="width:52px;text-align:center"></td>
+      <td><input class="mp-ci" id="mp-r${i}-rct" placeholder="ms" style="width:52px;text-align:center"></td>
+      <td><input class="mp-ci" id="mp-r${i}-rcp" placeholder="OK" style="width:42px;text-align:center"></td>
+      <td><input class="mp-ci" id="mp-r${i}-pe" placeholder="Ω" style="width:52px;text-align:center"></td>
+      <td><input class="mp-ci" id="mp-r${i}-bem" style="width:95px"></td>
+      <td><input class="mp-ci" id="mp-r${i}-sta" placeholder="✓" style="width:38px;text-align:center"></td>
+    </tr>`;
+  }
+  const ol = document.createElement('div');
+  ol.id = 'mp-overlay';
+  ol.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:var(--bg);overflow-y:auto;padding:20px;';
+  ol.innerHTML = `
+  <style>
+    #mp-overlay .mp-bar{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+    #mp-overlay .mp-sec{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+    #mp-overlay .mp-sec-t{font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+    #mp-overlay .mp-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px}
+    #mp-overlay .mp-f{display:flex;flex-direction:column;gap:3px}
+    #mp-overlay .mp-f label{font-size:11px;color:var(--text2);font-weight:600}
+    #mp-overlay .mp-f input,#mp-overlay .mp-f select{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 9px;font-size:13px;width:100%}
+    #mp-overlay .mp-tw{overflow-x:auto}
+    #mp-overlay .mp-t{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+    #mp-overlay .mp-t th{background:#1e3a5f;color:#93c5fd;padding:5px 7px;border:1px solid #334155;text-align:center;font-size:11px}
+    #mp-overlay .mp-t td{padding:2px 3px;border:1px solid var(--border)}
+    #mp-overlay .mp-ci{background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 5px;font-size:12px}
+    #mp-overlay .mp-t tr:nth-child(even){background:rgba(255,255,255,0.03)}
+    #mp-overlay .mp-t tr:hover{background:rgba(245,158,11,0.07)}
+    #mp-overlay .mp-chk{display:flex;flex-direction:column;gap:8px}
+    #mp-overlay .mp-chk label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
+  </style>
+  <div class="mp-bar">
+    <button class="btn btn-secondary" onclick="closeMessprotokollOverlay()">← Zurück</button>
+    <span style="font-size:17px;font-weight:700;flex:1">📋 Messprotokoll — Prüfprotokoll (Folgeblatt)</span>
+    <button class="btn btn-primary" onclick="exportMessprotokollPdf()" style="background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border:none;font-size:13px">📄 Als PDF exportieren &amp; in Speicher Platz speichern</button>
+  </div>
+
+  <div class="mp-sec">
+    <div class="mp-sec-t">📋 Allgemeine Angaben</div>
+    <div class="mp-g">
+      <div class="mp-f"><label>Auftraggeber</label><input id="mp-auftraggeber" value="Deniz Bütün"></div>
+      <div class="mp-f"><label>Adresse Auftraggeber</label><input id="mp-adresse" value="Bahnhofstr. 24, 21224 Rosengarten"></div>
+      <div class="mp-f"><label>Auftragnehmer</label><input id="mp-auftragnehmer" value="Yilmaz Elektrotechnik"></div>
+      <div class="mp-f"><label>Adresse Auftragnehmer</label><input id="mp-adr-an" value="Kiwittsmoor 21, 22417 Hamburg"></div>
+      <div class="mp-f"><label>Telefon</label><input id="mp-tel" value="0157 88147358"></div>
+      <div class="mp-f"><label>Anlage</label><input id="mp-anlage" value="EG / KG"></div>
+      <div class="mp-f"><label>Kunden-Nr.</label><input id="mp-kdnr" value="00164"></div>
+      <div class="mp-f"><label>Auftrag-Nr.</label><input id="mp-auftnr" value="2025_02_002"></div>
+      <div class="mp-f"><label>Stromkreisverteiler Nr.</label><input id="mp-uvnr" value="1"></div>
+      <div class="mp-f"><label>Blatt</label><input id="mp-blatt" value="3 von 3"></div>
+      <div class="mp-f"><label>Prüfdatum</label><input type="date" id="mp-datum" value="2025-04-21"></div>
+      <div class="mp-f"><label>Prüfer</label><input id="mp-pruefer" value="N. Yilmaz"></div>
+    </div>
+  </div>
+
+  <div class="mp-sec">
+    <div class="mp-sec-t">⚡ RCD-Gruppen</div>
+    <div class="mp-g">
+      <div class="mp-f"><label>Gruppe 1</label><input id="mp-rcd1" value="Q7 → F70–F77"></div>
+      <div class="mp-f"><label>Gruppe 2</label><input id="mp-rcd2" value="Q8 → F82–F87"></div>
+      <div class="mp-f"><label>Gruppe 3</label><input id="mp-rcd3" value="Q9 → F93–F95"></div>
+      <div class="mp-f"><label>Gruppe 4</label><input id="mp-rcd4" value="Q10 → F5–F7"></div>
+    </div>
+  </div>
+
+  <div class="mp-sec">
+    <div class="mp-sec-t">📊 Stromkreise — Messtabelle</div>
+    <div class="mp-tw">
+      <table class="mp-t">
+        <thead><tr>
+          <th>Nr.</th><th>Stromkreisbezeichnung</th><th>Schutzorgan (A)</th>
+          <th>RCD-Gruppe</th><th>Leitungstyp</th><th>Länge (m)</th>
+          <th>RL (Ω)</th><th>RCD-Ausl. (ms)</th><th>RCD-Prüfung</th>
+          <th>PE-Leiter (Ω)</th><th>Bemerkung</th><th>Status</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mp-sec">
+    <div class="mp-sec-t">✅ Prüfbestätigung &amp; Unterschrift</div>
+    <div class="mp-chk">
+      <label><input type="checkbox" id="mp-chk1" checked> Schutzmaßnahmen geprüft und für ordnungsgemäß befunden</label>
+      <label><input type="checkbox" id="mp-chk2" checked> Alle Schutzeinrichtungen funktionsfähig</label>
+      <label><input type="checkbox" id="mp-chk3" checked> Messergebnisse entsprechen den Anforderungen</label>
+    </div>
+    <div class="mp-g" style="margin-top:14px">
+      <div class="mp-f"><label>Ort</label><input id="mp-ort" value="Hamburg"></div>
+      <div class="mp-f"><label>Datum</label><input type="date" id="mp-sigdat" value="2025-04-21"></div>
+      <div class="mp-f"><label>Unterschrift / Name</label><input id="mp-signame" value="N. Yilmaz — Yilmaz Elektrotechnik"></div>
+    </div>
+  </div>`;
+  document.body.appendChild(ol);
+}
+
+function closeMessprotokollOverlay() {
+  const el = document.getElementById('mp-overlay');
+  if (el) el.remove();
+}
+
+function exportMessprotokollPdf() {
+  const g = id => { const el = document.getElementById(id); return el ? (el.value||'') : ''; };
+  const gc = id => { const el = document.getElementById(id); return el ? el.checked : false; };
+  const chk = c => c ? '&#9745;' : '&#9744;';
+  let rowsHtml = '';
+  for (let i = 0; i < 20; i++) {
+    const nr = g('mp-r'+i+'-nr'), bez = g('mp-r'+i+'-bez');
+    if (!nr && !bez) continue;
+    const bg = rowsHtml.split('<tr').length % 2 === 0 ? '#f2f2f2' : '#ffffff';
+    rowsHtml += `<tr style="background:${bg}">
+      <td style="text-align:center">${nr}</td>
+      <td>${bez}</td>
+      <td style="text-align:center">${g('mp-r'+i+'-sch')}</td>
+      <td style="text-align:center">${g('mp-r'+i+'-rcd')}</td>
+      <td>${g('mp-r'+i+'-lei')}</td>
+      <td style="text-align:center">${g('mp-r'+i+'-len')}</td>
+      <td style="text-align:center">${g('mp-r'+i+'-rl')}</td>
+      <td style="text-align:center">${g('mp-r'+i+'-rct')}</td>
+      <td style="text-align:center">${g('mp-r'+i+'-rcp')}</td>
+      <td style="text-align:center">${g('mp-r'+i+'-pe')}</td>
+      <td>${g('mp-r'+i+'-bem')}</td>
+      <td style="text-align:center;color:green;font-size:14px">${g('mp-r'+i+'-sta')}</td>
+    </tr>`;
+  }
+  const htmlContent = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">
+<title>Prüfprotokoll ${g('mp-anlage')} ${g('mp-datum')}</title>
+<style>
+@media print{@page{size:A4 landscape;margin:10mm}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a2e;margin:0;padding:14px}
+h1{font-size:17px;color:#1F3864;margin:0 0 3px;text-align:center}
+h2{font-size:11px;color:#4472C4;margin:0 0 10px;text-align:center;font-weight:normal}
+.it{width:100%;border-collapse:collapse;margin-bottom:10px}
+.it td{padding:4px 7px;border:1px solid #B8CCE4;font-size:10.5px}
+.it .lb{background:#EBF3FA;font-weight:700;width:140px}
+.rcd{background:#EBF3FA;border:1px solid #BDD7EE;border-radius:4px;padding:5px 9px;margin-bottom:10px;font-size:10px;color:#1F3864}
+.mt{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:10px}
+.mt th{background:#BDD7EE;color:#1F3864;padding:4px 5px;border:1px solid #4472C4;text-align:center;font-size:9.5px}
+.mt td{padding:3px 5px;border:1px solid #B8CCE4}
+.ck{margin-bottom:10px;font-size:11px;line-height:1.8}
+.sig{margin-top:16px;font-size:11px}
+.sig .ln{border-top:1px solid #333;margin-top:22px;padding-top:3px;display:inline-block;width:260px}
+.ft{text-align:right;font-size:8.5px;color:#888;margin-top:6px}
+</style></head><body>
+<h1>PRÜFPROTOKOLL (FOLGEBLATT)</h1>
+<h2>Elektrische Anlage — Messprotokoll gemäß DIN VDE 0100-600</h2>
+<table class="it">
+<tr><td class="lb">Auftraggeber</td><td>${g('mp-auftraggeber')}, ${g('mp-adresse')}</td>
+    <td class="lb">Auftragnehmer</td><td>${g('mp-auftragnehmer')}, ${g('mp-adr-an')}</td></tr>
+<tr><td class="lb">Anlage</td><td>${g('mp-anlage')}</td>
+    <td class="lb">Telefon</td><td>${g('mp-tel')}</td></tr>
+<tr><td class="lb">Kunden-Nr.</td><td>${g('mp-kdnr')}</td>
+    <td class="lb">Auftrag-Nr.</td><td>${g('mp-auftnr')}</td></tr>
+<tr><td class="lb">Stromkreisverteiler</td><td>Nr. ${g('mp-uvnr')}</td>
+    <td class="lb">Blatt / Prüfdatum</td><td>${g('mp-blatt')} — ${g('mp-datum')}</td></tr>
+</table>
+<div class="rcd"><strong>RCD-Gruppen:</strong>&nbsp; ${g('mp-rcd1')} &nbsp;|&nbsp; ${g('mp-rcd2')} &nbsp;|&nbsp; ${g('mp-rcd3')} &nbsp;|&nbsp; ${g('mp-rcd4')}</div>
+<table class="mt"><thead><tr>
+<th>Nr.</th><th>Stromkreisbezeichnung</th><th>Schutzorgan</th><th>RCD-Gruppe</th>
+<th>Leitungstyp</th><th>Länge (m)</th><th>RL (Ω)</th><th>RCD-Ausl. (ms)</th>
+<th>RCD-Prüfung</th><th>PE-Leiter (Ω)</th><th>Bemerkung</th><th>Status</th>
+</tr></thead><tbody>${rowsHtml||'<tr><td colspan="12" style="text-align:center;color:#888">Keine Einträge</td></tr>'}</tbody></table>
+<div class="ck">
+${chk(gc('mp-chk1'))} Schutzmaßnahmen geprüft und für ordnungsgemäß befunden<br>
+${chk(gc('mp-chk2'))} Alle Schutzeinrichtungen funktionsfähig<br>
+${chk(gc('mp-chk3'))} Messergebnisse entsprechen den Anforderungen
+</div>
+<div class="sig"><div class="ln">${g('mp-signame')}<br><small>${g('mp-ort')}, ${g('mp-sigdat')}</small></div></div>
+<div class="ft">© 2011 ZVEH</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+
+  // In Speicher Platz sp_pruefung speichern
+  const fname = 'Messprotokoll_' + (g('mp-auftraggeber')||'Protokoll').replace(/\s+/g,'_') + '_' + (g('mp-datum')||new Date().toISOString().slice(0,10));
+  const blob = new Blob([htmlContent], {type:'text/html;charset=utf-8'});
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = getSpeicherData();
+    if (!data['sp_pruefung']) data['sp_pruefung'] = [];
+    data['sp_pruefung'].unshift({
+      id: Date.now(),
+      name: fname,
+      typ: 'html',
+      groesse: Math.round(blob.size/1024) + ' KB',
+      datum: new Date().toLocaleDateString('de-DE'),
+      originalName: fname + '.html',
+      data: e.target.result
+    });
+    saveSpeicherData(data);
+    notify('✅ Messprotokoll gespeichert → Speicher Platz: Prüfung & Messung', 'success');
+  };
+  reader.readAsDataURL(blob);
+
+  // Druckfenster öffnen
+  const win = window.open('', '_blank', 'width=1200,height=750');
+  if (win) {
+    win.document.open();
+    win.document.write(htmlContent);
+    win.document.close();
+  } else {
+    notify('⚠️ Popup geblockt — Protokoll trotzdem im Speicher Platz gespeichert', 'warning');
+  }
+}
 
 // ===== MESSGERÄTE =====
 function messgeraetePage() {
